@@ -11,6 +11,7 @@ from SRC.Backend.schemas.appointment_types import (
     AppointmentTypeDetail,
     AppointmentTypeListItem,
     AppointmentTypeOut,
+    AppointmentTypeUpdate,
     AppointmentTypeUpdateRules,
     PublishOut,
     QuestionIn,
@@ -31,6 +32,7 @@ def _detail_response(detail: dict) -> AppointmentTypeDetail:
         **appointment_type.__dict__,
         "resources": detail["resources"],
         "questions": detail["questions"],
+        "working_hours": detail.get("working_hours", []),
     }
     return AppointmentTypeDetail.model_validate(data)
 
@@ -73,6 +75,16 @@ async def get_detail(appointment_type_id: UUID, session: AsyncSession = Depends(
     return _detail_response(detail)
 
 
+@router.patch("/{appointment_type_id}", response_model=AppointmentTypeOut)
+async def update_appointment_type(
+    appointment_type_id: UUID,
+    payload: AppointmentTypeUpdate,
+    current_user: User = Depends(require_role("organiser", "admin")),
+    session: AsyncSession = Depends(get_db),
+):
+    return await appointment_type_service.update_details(session, appointment_type_id, payload, current_user)
+
+
 @router.get("/{appointment_type_id}/resources", response_model=list[ResourceOut])
 async def resources(appointment_type_id: UUID, session: AsyncSession = Depends(get_db)):
     detail = await appointment_type_service.get_detail(session, appointment_type_id)
@@ -87,6 +99,16 @@ async def add_resource(
     session: AsyncSession = Depends(get_db),
 ):
     return await appointment_type_service.add_resource(session, appointment_type_id, payload, current_user)
+
+
+@router.put("/{appointment_type_id}/resources", response_model=list[ResourceOut])
+async def replace_resources(
+    appointment_type_id: UUID,
+    payload: list[ResourceCreate],
+    current_user: User = Depends(require_role("organiser", "admin")),
+    session: AsyncSession = Depends(get_db),
+):
+    return await appointment_type_service.replace_resources(session, appointment_type_id, payload, current_user)
 
 
 @router.post("/{appointment_type_id}/working-hours")

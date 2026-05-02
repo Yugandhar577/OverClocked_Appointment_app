@@ -42,6 +42,7 @@ export function App() {
         <Route element={<RequireAuth roles={["organiser", "admin"]} />}>
           <Route path="/organiser/types" element={<AppointmentTypesPage />} />
           <Route path="/organiser/types/new" element={<NewTypePage />} />
+          <Route path="/organiser/types/:appointmentTypeId" element={<NewTypePage />} />
           <Route path="/organiser/bookings" element={<OrganiserBookingsPage />} />
         </Route>
         <Route element={<RequireAuth roles={["admin"]} />}>

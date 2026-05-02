@@ -35,6 +35,14 @@ export interface Resource {
   is_active: boolean
 }
 
+export interface WorkingHour {
+  id?: string
+  day_of_week: number
+  start_time: string
+  end_time: string
+  resource_id?: string | null
+}
+
 export interface Question {
   id: string
   question_text: string
@@ -71,6 +79,7 @@ export interface AppointmentTypeDetail {
   confirmation_msg?: string | null
   resources: Resource[]
   questions: Question[]
+  working_hours: WorkingHour[]
 }
 
 export interface AvailabilitySlot {
@@ -91,6 +100,9 @@ export interface Booking {
   status: string
   people_count: number
   confirmation_code: string
+  customer_full_name?: string | null
+  customer_email?: string | null
+  customer_phone?: string | null
   created_at: string
   updated_at: string
   slot_start?: string | null

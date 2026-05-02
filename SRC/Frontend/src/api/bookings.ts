@@ -52,3 +52,8 @@ export async function confirmBooking(id: string): Promise<Booking> {
   const res = await api.patch<Booking>(`/bookings/${id}/confirm`)
   return res.data
 }
+
+export async function organiserCancelBooking(id: string, reason?: string): Promise<Booking> {
+  const res = await api.patch<Booking>(`/organiser/bookings/${id}/cancel`, { reason })
+  return res.data
+}

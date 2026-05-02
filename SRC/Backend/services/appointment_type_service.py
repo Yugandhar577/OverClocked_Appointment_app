@@ -99,7 +99,19 @@ async def get_detail(session: AsyncSession, appointment_type_id: UUID) -> dict:
             .order_by(AppointmentQuestion.display_order.asc())
         )
     ).scalars().all()
-    return {"appointment_type": appointment_type, "resources": list(resources), "questions": list(questions)}
+    working_hours = (
+        await session.execute(
+            select(WorkingHour)
+            .where(WorkingHour.appointment_type_id == appointment_type_id)
+            .order_by(WorkingHour.day_of_week.asc(), WorkingHour.start_time.asc())
+        )
+    ).scalars().all()
+    return {
+        "appointment_type": appointment_type,
+        "resources": list(resources),
+        "questions": list(questions),
+        "working_hours": list(working_hours),
+    }
 
 
 async def get_by_share_token(session: AsyncSession, share_token: str) -> dict:
@@ -133,6 +145,47 @@ async def add_resource(session: AsyncSession, appointment_type_id: UUID, payload
             )
         )
     return resource
+
+
+async def update_details(session: AsyncSession, appointment_type_id: UUID, payload, actor: User) -> AppointmentType:
+    async with session.begin():
+        appointment_type = await _assert_owner(session, appointment_type_id, actor)
+        appointment_type.title = payload.title
+        appointment_type.description = payload.description
+        appointment_type.duration_minutes = payload.duration_minutes
+        appointment_type.timezone = payload.timezone
+        appointment_type.preset_type = payload.preset_type
+        appointment_type.resource_type = payload.resource_type
+        appointment_type.future_days_limit = payload.future_days_limit
+        appointment_type.venue = payload.venue
+        appointment_type.confirmation_msg = payload.confirmation_msg
+    return appointment_type
+
+
+async def replace_resources(session: AsyncSession, appointment_type_id: UUID, payload: list, actor: User) -> list[Resource]:
+    async with session.begin():
+        appointment_type = await _assert_owner(session, appointment_type_id, actor)
+        await session.execute(delete(AppointmentTypeResource).where(AppointmentTypeResource.appointment_type_id == appointment_type_id))
+        resources = []
+        for index, row in enumerate(payload):
+            resource = Resource(
+                organiser_id=actor.id,
+                name=row.name,
+                resource_type=row.resource_type,
+                capacity=row.capacity,
+                timezone=row.timezone,
+            )
+            session.add(resource)
+            await session.flush()
+            session.add(
+                AppointmentTypeResource(
+                    appointment_type_id=appointment_type.id,
+                    resource_id=resource.id,
+                    priority=row.priority or index + 1,
+                )
+            )
+            resources.append(resource)
+    return resources
 
 
 async def replace_working_hours(session: AsyncSession, appointment_type_id: UUID, payload: list, actor: User) -> int:
