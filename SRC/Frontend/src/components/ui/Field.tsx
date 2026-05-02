@@ -1,13 +1,13 @@
-import type { InputHTMLAttributes, SelectHTMLAttributes, TextareaHTMLAttributes } from "react"
 import { clsx } from "clsx"
+import { forwardRef, type InputHTMLAttributes, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react"
 
 export function Label({ children }: { children: React.ReactNode }) {
   return <label className="text-sm font-semibold text-ink">{children}</label>
 }
 
-export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
-  return <input {...props} className={clsx("focus-ring h-10 rounded-md border border-line bg-white px-3 text-sm text-ink", props.className)} />
-}
+export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function Input(props, ref) {
+  return <input {...props} ref={ref} className={clsx("focus-ring h-10 rounded-md border border-line bg-white px-3 text-sm text-ink", props.className)} />
+})
 
 export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
   return <select {...props} className={clsx("focus-ring h-10 rounded-md border border-line bg-white px-3 text-sm text-ink", props.className)} />

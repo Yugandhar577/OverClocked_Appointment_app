@@ -31,6 +31,19 @@ services:
       SMTP_HOST: mailhog
     ports:
       - "8000:8000"
+    volumes:
+      # Serve current repo sources without rebuilding after every backend change.
+      - .:/app
+    command:
+      [
+        "uvicorn",
+        "SRC.Backend.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+        "--reload",
+      ]
     depends_on:
       postgres:
         condition: service_healthy
@@ -45,8 +58,31 @@ services:
       VITE_APP_NAME: OverClocked Appointments
     ports:
       - "5173:5173"
+    volumes:
+      # Mount local sources so UI changes appear without rebuilding the image.
+      - ./SRC/Frontend:/app
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
     depends_on:
       - backend
+
+  # One-off demo users + sample data (run after postgres is up). Clears auth-related tables.
+  # Usage: docker compose --profile seed run --rm seed
+  seed:
+    profiles: ["seed"]
+    build:
+      context: .
+      dockerfile: SRC/Backend/Dockerfile
+    env_file:
+      - .env.example
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/appointments
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: ["sh", "-c", "alembic upgrade head && python SRC/Backend/scripts/seed_test_data.py"]
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 volumes:
   postgres_data:
