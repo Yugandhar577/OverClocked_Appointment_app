@@ -1,4 +1,5 @@
-import { CalendarDays, LayoutDashboard, LogOut, Shield, User, UserCog } from "lucide-react"
+import { Building2, CalendarDays, ChevronDown, LayoutDashboard, LogOut, Shield, User, UserCog, Users } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
 import { Link, NavLink, Outlet } from "react-router-dom"
 
 import { useAuth } from "../../auth/useAuth"
@@ -19,7 +20,7 @@ export function AppShell() {
             {user && <NavItem to="/me/appointments">My appointments</NavItem>}
             {hasRole("organiser", "admin") && <NavItem to="/organiser/types">Types</NavItem>}
             {hasRole("organiser", "admin") && <NavItem to="/organiser/bookings">Bookings</NavItem>}
-            {hasRole("admin") && <NavItem to="/admin/users">Admin</NavItem>}
+            {hasRole("admin") && <AdminDropdown />}
           </nav>
           <div className="flex items-center gap-2">
             {user ? (
@@ -55,11 +56,64 @@ export function AppShell() {
           <MobileNav to="/organiser/types" icon={<UserCog size={18} />} label="Org" />
         )}
         {hasRole("admin") ? (
-          <MobileNav to="/admin/users" icon={<Shield size={18} />} label="Admin" />
+          <MobileNav to="/admin" icon={<Shield size={18} />} label="Admin" />
         ) : (
           <MobileNav to="/me/profile" icon={<Shield size={18} />} label="Profile" />
         )}
       </nav>
+    </div>
+  )
+}
+
+function AdminDropdown() {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener("mousedown", handleClick)
+    return () => document.removeEventListener("mousedown", handleClick)
+  }, [])
+
+  const items = [
+    { to: "/admin", label: "Dashboard", icon: <LayoutDashboard size={15} /> },
+    { to: "/admin/users", label: "Users", icon: <Users size={15} /> },
+    { to: "/admin/organizations", label: "Organizations", icon: <Building2 size={15} /> },
+  ]
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex h-9 items-center gap-1.5 rounded-md px-3 text-sm font-semibold text-ink transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-signal focus:ring-offset-2 focus:ring-offset-paper"
+      >
+        <Shield size={15} />
+        Admin
+        <ChevronDown size={13} className={`transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full z-50 mt-1.5 w-48 overflow-hidden rounded-xl border border-line bg-white py-1 shadow-panel">
+          {items.map(({ to, label, icon }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={to === "/admin"}
+              onClick={() => setOpen(false)}
+              className={({ isActive }) =>
+                [
+                  "flex items-center gap-2.5 px-3 py-2 text-sm font-semibold transition",
+                  isActive ? "bg-ink text-paper" : "text-ink hover:bg-paper",
+                ].join(" ")
+              }
+            >
+              {icon}
+              {label}
+            </NavLink>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

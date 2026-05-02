@@ -1,9 +1,12 @@
 import { Navigate, Route, Routes } from "react-router-dom"
 
+import { AdminLayout } from "./components/admin/AdminLayout"
 import { AppShell } from "./components/layout/AppShell"
 import { AuthShell } from "./components/layout/AuthShell"
 import { RequireAuth } from "./components/layout/RequireAuth"
-import { AdminStatsPage } from "./pages/admin/AdminStatsPage"
+import { AdminDashboardPage } from "./pages/admin/AdminDashboardPage"
+import { AdminOrganizationDetailPage } from "./pages/admin/AdminOrganizationDetailPage"
+import { AdminOrganizationsPage } from "./pages/admin/AdminOrganizationsPage"
 import { AdminUsersPage } from "./pages/admin/AdminUsersPage"
 import { BookingPage } from "./pages/booking/BookingPage"
 import { ConfirmationPage } from "./pages/booking/ConfirmationPage"
@@ -42,8 +45,13 @@ export function App() {
           <Route path="/organiser/bookings" element={<OrganiserBookingsPage />} />
         </Route>
         <Route element={<RequireAuth roles={["admin"]} />}>
-          <Route path="/admin/users" element={<AdminUsersPage />} />
-          <Route path="/admin/stats" element={<AdminStatsPage />} />
+          <Route element={<AdminLayout />}>
+            <Route path="/admin" element={<AdminDashboardPage />} />
+            <Route path="/admin/users" element={<AdminUsersPage />} />
+            <Route path="/admin/organizations" element={<AdminOrganizationsPage />} />
+            <Route path="/admin/organizations/:orgId" element={<AdminOrganizationDetailPage />} />
+          </Route>
+          <Route path="/admin/stats" element={<Navigate to="/admin" replace />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
