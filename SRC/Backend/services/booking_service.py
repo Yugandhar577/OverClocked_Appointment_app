@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from SRC.Backend.config import get_settings
 from SRC.Backend.core.errors import (
+    BookingInProgressError,
     CancelWindowClosedError,
     CapacityExceededError,
     IntakeAnswerMissingError,
@@ -104,6 +105,24 @@ def _answer_text(value) -> str | None:
 
 
 # Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
+async def _raise_slot_lock_or_unavailable(session: AsyncSession, slot_id: UUID) -> None:
+    slot = await session.get(GeneratedSlot, slot_id)
+    if slot and not slot.is_blocked and slot.booked_count < slot.max_capacity:
+        raise BookingInProgressError()
+    raise SlotUnavailableError()
+
+
+# Explanation:
+# `_raise_slot_lock_or_unavailable` distinguishes two cases that both make
+# the `FOR UPDATE SKIP LOCKED` query return no row:
+# 1. the slot is genuinely full/blocked/missing, or
+# 2. another transaction currently owns the lock and is booking it.
+# The second case returns a retryable domain error so the frontend can
+# show a better message and refresh availability instead of implying the
+# slot is permanently gone.
+
+
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 async def availability(
     session: AsyncSession,
     *,
@@ -175,7 +194,7 @@ async def create(session: AsyncSession, payload, actor: User) -> tuple[Appointme
         slot_result = await session.execute(text(LOCK_SLOT_SQL), {"slot_id": payload.slot_id})
         slot_row = slot_result.mappings().first()
         if slot_row is None:
-            raise SlotUnavailableError()
+            await _raise_slot_lock_or_unavailable(session, payload.slot_id)
         if slot_row["appointment_type_id"] != payload.appointment_type_id:
             raise SlotUnavailableError()
         if payload.resource_id and slot_row["resource_id"] != payload.resource_id:

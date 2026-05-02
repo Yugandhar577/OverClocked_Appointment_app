@@ -77,6 +77,12 @@ class CapacityExceededError(AppError):
 
 
 # Backend note: Groups related backend data or behavior for a single domain concept.
+class BookingInProgressError(AppError):
+    status_code = 409
+    detail = "booking_in_progress"
+
+
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class IntakeAnswerMissingError(AppError):
     status_code = 422
 

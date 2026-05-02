@@ -6,38 +6,57 @@ import { errorMessage } from "../../api/client"
 import type { Booking } from "../../api/types"
 import { Button } from "../../components/ui/Button"
 import { Notice } from "../../components/ui/Notice"
+import { Skeleton } from "../../components/ui/Skeleton"
 import { StatusBadge } from "../../components/ui/StatusBadge"
 import { formatDateTime } from "../../lib/format"
 
 export function OrganiserBookingsPage() {
+  const pageSize = 8
   const [items, setItems] = useState<Booking[]>([])
   const [message, setMessage] = useState("")
   const [query, setQuery] = useState("")
   const [status, setStatus] = useState("all")
+  const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
 
-  function load() {
-    organiserBookings()
-      .then((data) => setItems(data.items))
+  function load(nextPage = 1, append = false) {
+    setMessage("")
+    if (append) {
+      setLoadingMore(true)
+    } else {
+      setLoading(true)
+    }
+    organiserBookings({ status, page: nextPage, pageSize })
+      .then((data) => {
+        setItems((current) => (append ? [...current, ...data.items] : data.items))
+        setPage(data.page)
+        setTotal(data.total)
+      })
       .catch((err) => setMessage(errorMessage(err)))
+      .finally(() => {
+        setLoading(false)
+        setLoadingMore(false)
+      })
   }
 
-  useEffect(load, [])
+  useEffect(() => load(1, false), [status])
 
   const visibleItems = useMemo(
     () =>
       items.filter((booking) => {
-        const matchesStatus = status === "all" || booking.status === status
         const haystack = `${booking.appointment_title || ""} ${booking.confirmation_code} ${booking.venue || ""}`.toLowerCase()
-        return matchesStatus && haystack.includes(query.trim().toLowerCase())
+        return haystack.includes(query.trim().toLowerCase())
       }),
-    [items, query, status],
+    [items, query],
   )
 
   async function confirm(id: string) {
     try {
       await confirmBooking(id)
       setMessage("Appointment confirmed.")
-      load()
+      load(1, false)
     } catch (err) {
       setMessage(errorMessage(err))
     }
@@ -47,7 +66,7 @@ export function OrganiserBookingsPage() {
     try {
       await organiserCancelBooking(id, "Cancelled by organiser")
       setMessage("Appointment cancelled.")
-      load()
+      load(1, false)
     } catch (err) {
       setMessage(errorMessage(err))
     }
@@ -62,7 +81,7 @@ export function OrganiserBookingsPage() {
             <h1 className="text-2xl font-bold text-ink">Manage appointments</h1>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Metric label="Total" value={items.length} icon={<CalendarDays size={18} />} />
+            <Metric label="Loaded" value={items.length} icon={<CalendarDays size={18} />} />
             <Metric label="Pending" value={items.filter((item) => item.status === "pending").length} icon={<Clock size={18} />} />
           </div>
         </div>
@@ -103,6 +122,17 @@ export function OrganiserBookingsPage() {
               </tr>
             </thead>
             <tbody>
+              {loading &&
+                Array.from({ length: 5 }, (_, index) => (
+                  <tr key={`skeleton-${index}`} className="border-t border-line">
+                    <Td><Skeleton className="h-10 w-48 bg-white" /></Td>
+                    <Td><Skeleton className="h-4 w-32 bg-white" /></Td>
+                    <Td><Skeleton className="h-4 w-36 bg-white" /></Td>
+                    <Td><Skeleton className="h-8 w-24 rounded-full bg-white" /></Td>
+                    <Td><Skeleton className="h-4 w-28 bg-white" /></Td>
+                    <Td><Skeleton className="h-10 w-24 bg-white" /></Td>
+                  </tr>
+                ))}
               {visibleItems.map((booking) => (
                 <tr key={booking.id} className="border-t border-line">
                   <Td>
@@ -133,6 +163,13 @@ export function OrganiserBookingsPage() {
           </table>
         </div>
         {visibleItems.length === 0 && <div className="p-4"><Notice>No appointments match this view.</Notice></div>}
+        {items.length < total && (
+          <div className="border-t border-line p-4 text-center">
+            <Button type="button" variant="secondary" onClick={() => load(page + 1, true)} disabled={loadingMore}>
+              {loadingMore ? "Loading..." : `Load more bookings (${items.length}/${total})`}
+            </Button>
+          </div>
+        )}
       </section>
     </div>
   )

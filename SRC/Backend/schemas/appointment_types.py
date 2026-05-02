@@ -25,6 +25,8 @@ class AppointmentTypeCreate(BaseModel):
     venue: str | None = None
     image_url: str | None = None
     video_url: str | None = None
+    cover_image_compressed: str | None = None
+    cover_image_cache_key: str | None = None
 
 
 # Backend note: Input contract used when updating a backend resource.
@@ -44,6 +46,8 @@ class AppointmentTypeUpdate(BaseModel):
     cancellation_email_template: str | None = "Appointment: Appointment Canceled"
     reminder_email_hours: int | None = Field(default=3, ge=0, le=168)
     reminder_sms_hours: int | None = Field(default=1, ge=0, le=168)
+    cover_image_compressed: str | None = None
+    cover_image_cache_key: str | None = None
 
 
 # Backend note: Input contract used when updating a backend resource.
@@ -186,6 +190,8 @@ class AppointmentTypeOut(BaseModel):
     reminder_email_hours: int | None
     reminder_sms_hours: int | None
     slot_interval_minutes: int | None
+    cover_image_compressed: str | None = None
+    cover_image_cache_key: str | None = None
 
 
 # Backend note: Groups related backend data or behavior for a single domain concept.

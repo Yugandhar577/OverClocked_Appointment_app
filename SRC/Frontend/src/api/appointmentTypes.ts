@@ -1,8 +1,12 @@
 import { api } from "./client"
 import type { ActivityItem, AppointmentTypeDetail, AppointmentTypeListItem, Paginated, Resource, ResourceCandidate } from "./types"
 
-export async function listAppointmentTypes(published: boolean | null = true): Promise<Paginated<AppointmentTypeListItem>> {
-  const params = published === null ? {} : { published }
+export async function listAppointmentTypes(
+  published: boolean | null = true,
+  page = 1,
+  pageSize = 12,
+): Promise<Paginated<AppointmentTypeListItem>> {
+  const params = published === null ? { page, page_size: pageSize } : { published, page, page_size: pageSize }
   const res = await api.get<Paginated<AppointmentTypeListItem>>("/appointment-types", { params })
   return res.data
 }
@@ -28,6 +32,8 @@ export async function createAppointmentType(payload: {
   venue?: string
   image_url?: string
   video_url?: string
+  cover_image_compressed?: string | null
+  cover_image_cache_key?: string | null
 }) {
   const res = await api.post<AppointmentTypeDetail>("/appointment-types", payload)
   return res.data
@@ -51,6 +57,8 @@ export async function updateAppointmentType(
     cancellation_email_template?: string
     reminder_email_hours?: number | null
     reminder_sms_hours?: number | null
+    cover_image_compressed?: string | null
+    cover_image_cache_key?: string | null
   },
 ) {
   const res = await api.patch<AppointmentTypeDetail>(`/appointment-types/${appointmentTypeId}`, payload)

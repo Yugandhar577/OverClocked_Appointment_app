@@ -192,8 +192,8 @@ async def confirm_booking(
 @router.get("/me/appointments", response_model=Paginated)
 async def my_appointments(
     status: str | None = Query(default=None),
-    page: int = 1,
-    page_size: int = 20,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=50),
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db),
 ):
@@ -221,8 +221,8 @@ async def organiser_bookings(
     status: str | None = None,
     date_from: datetime | None = None,
     date_to: datetime | None = None,
-    page: int = 1,
-    page_size: int = 20,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=50),
     current_user: User = Depends(require_role("organiser", "admin")),
     session: AsyncSession = Depends(get_db),
 ):

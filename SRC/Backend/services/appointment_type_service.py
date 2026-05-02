@@ -71,6 +71,8 @@ async def create(session: AsyncSession, payload, actor: User) -> AppointmentType
             venue=payload.venue,
             image_url=payload.image_url,
             video_url=payload.video_url,
+            cover_image_compressed=getattr(payload, "cover_image_compressed", None),
+            cover_image_cache_key=getattr(payload, "cover_image_cache_key", None),
             manage_capacity=True,
             max_capacity=1,
             cancel_before_minutes=60,
@@ -249,6 +251,8 @@ async def update_details(session: AsyncSession, appointment_type_id: UUID, paylo
         appointment_type.cancellation_email_template = payload.cancellation_email_template
         appointment_type.reminder_email_hours = payload.reminder_email_hours
         appointment_type.reminder_sms_hours = payload.reminder_sms_hours
+        appointment_type.cover_image_compressed = getattr(payload, "cover_image_compressed", None)
+        appointment_type.cover_image_cache_key = getattr(payload, "cover_image_cache_key", None)
         _audit(
             session,
             actor,

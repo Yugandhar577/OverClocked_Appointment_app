@@ -36,3 +36,90 @@ textarea {
 .focus-ring {
   @apply focus:outline-none focus:ring-2 focus:ring-signal focus:ring-offset-2 focus:ring-offset-paper;
 }
+
+@keyframes auth-card-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes auth-left-slide {
+  from {
+    opacity: 0;
+    transform: translateX(44px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes auth-right-slide {
+  from {
+    opacity: 0;
+    transform: translateX(-44px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.auth-shell-card {
+  animation: auth-card-rise 520ms ease-out both;
+}
+
+.auth-panel-left {
+  animation: auth-left-slide 620ms 120ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.auth-panel-right {
+  animation: auth-right-slide 620ms 180ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-shell-card,
+  .auth-panel-left,
+  .auth-panel-right {
+    animation: none;
+  }
+}
+
+::view-transition-old(root) {
+  animation: route-old-left 300ms ease both;
+}
+
+::view-transition-new(root) {
+  animation: route-new-right 300ms ease both;
+}
+
+@keyframes route-old-left {
+  to {
+    opacity: 0;
+    transform: translateX(-36px);
+  }
+}
+
+@keyframes route-new-right {
+  from {
+    opacity: 0;
+    transform: translateX(36px);
+  }
+}
+
+.route-slide-out body {
+  animation: route-old-left 220ms ease both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root),
+  .route-slide-out body {
+    animation: none;
+  }
+}

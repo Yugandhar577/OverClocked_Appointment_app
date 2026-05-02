@@ -17,3 +17,12 @@ def test_unit_booking_calls_for_update_skip_locked():
     assert "FOR UPDATE SKIP LOCKED" in LOCK_SLOT_SQL
     assert "SELECT * FROM generated_slots" in source
     assert "AND is_blocked = FALSE AND booked_count < max_capacity" in source
+
+
+# Backend note: Asserts a specific backend behavior so future changes can be checked safely.
+def test_unit_booking_has_retryable_lock_error():
+    source = Path("SRC/Backend/services/booking_service.py").read_text(encoding="utf-8")
+    errors = Path("SRC/Backend/core/errors.py").read_text(encoding="utf-8")
+    assert "_raise_slot_lock_or_unavailable" in source
+    assert "BookingInProgressError" in source
+    assert 'detail = "booking_in_progress"' in errors

@@ -12,6 +12,7 @@ import { useAuth } from "../../auth/useAuth"
 import { Button } from "../../components/ui/Button"
 import { Field, Select, Textarea } from "../../components/ui/Field"
 import { Notice } from "../../components/ui/Notice"
+import { Skeleton, SkeletonText } from "../../components/ui/Skeleton"
 import { formatTime, todayIsoDate } from "../../lib/format"
 import { loadFeatureFlags } from "../../lib/featureFlags"
 import "react-day-picker/dist/style.css"
@@ -149,8 +150,29 @@ export function BookingPage({ share = false }: { share?: boolean }) {
       navigate(`/booking/${response.booking_id}/confirmation`)
     } catch (err) {
       setError(errorMessage(err))
+      await refreshSlotsAfterBookingFailure()
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function refreshSlotsAfterBookingFailure() {
+    if (!detail) return
+    try {
+      const freshSlots = await availability({
+        appointment_type_id: detail.id,
+        resource_id: resourceId || undefined,
+        date,
+        tz_offset_minutes: -new Date().getTimezoneOffset(),
+      })
+      setSlots(freshSlots)
+      const stillSelectable = freshSlots.some((slot) => slot.slot_id === slotId && (slot.remaining_capacity > 0 || waitlistEnabled))
+      if (!stillSelectable) {
+        setSlotId(freshSlots.find((slot) => slot.remaining_capacity > 0)?.slot_id ?? "")
+        setPeople(1)
+      }
+    } catch {
+      setSlotHint("Could not refresh availability. Please reload this page before trying again.")
     }
   }
 
@@ -180,13 +202,19 @@ export function BookingPage({ share = false }: { share?: boolean }) {
   }
 
   function slotClass(slot: AvailabilitySlot, selected: boolean) {
+    const waitlistSlot = waitlistEnabled && (slot.status === "waitlist" || slot.is_waitlist_reserved || slot.remaining_capacity <= 0)
+    if (selected && waitlistSlot) return "border-amber-700 bg-amber-100 text-amber-950 shadow-sm"
     if (selected) return "border-ink bg-ink text-paper shadow-sm"
+    if (waitlistSlot) return "border-amber-300 bg-amber-50 text-amber-950 hover:border-amber-600"
     if (slot.status === "full" || slot.remaining_capacity <= 0) return "border-red-200 bg-red-50 text-red-800"
-    if (slot.status === "waitlist" || slot.is_waitlist_reserved) return "border-amber-200 bg-amber-50 text-amber-900"
     return "border-green-200 bg-green-50 text-green-900 hover:border-green-500"
   }
 
-  if (!detail && !error) return <Notice>Loading appointment type...</Notice>
+  const selectedSlotIsWaitlist = Boolean(
+    selectedSlot && waitlistEnabled && (selectedSlot.status === "waitlist" || selectedSlot.is_waitlist_reserved || selectedSlot.remaining_capacity <= 0),
+  )
+
+  if (!detail && !error) return <BookingPageSkeleton />
 
   return (
     <form className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]" onSubmit={submit}>
@@ -258,13 +286,17 @@ export function BookingPage({ share = false }: { share?: boolean }) {
                 <label className="text-sm font-semibold text-ink">Slots</label>
                 {slotHint && <p className="text-sm text-neutral-700">{slotHint}</p>}
                 <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                  {loadingSlots && slots.length === 0 &&
+                    Array.from({ length: 8 }, (_, index) => (
+                      <Skeleton key={index} className="h-[58px] border border-line bg-white" />
+                    ))}
                   {slots.map((slot) => (
                     <button
                       key={slot.slot_id}
                       type="button"
-                      disabled={slot.remaining_capacity <= 0}
+                      disabled={slot.remaining_capacity <= 0 && !waitlistEnabled}
                       onClick={() => {
-                        if (slot.remaining_capacity <= 0) return
+                        if (slot.remaining_capacity <= 0 && !waitlistEnabled) return
                         setSlotId(slot.slot_id)
                         setPeople(1)
                       }}
@@ -273,7 +305,7 @@ export function BookingPage({ share = false }: { share?: boolean }) {
                       {formatTime(slot.start_datetime)}
                       <span className="block text-xs opacity-80">
                         {slot.status === "full" || slot.remaining_capacity <= 0
-                          ? "Fully booked"
+                          ? waitlistEnabled ? "Join waitlist" : "Fully booked"
                           : slot.status === "waitlist" || slot.is_waitlist_reserved
                             ? "Waitlist reserved"
                             : `${slot.remaining_capacity} left`}
@@ -281,7 +313,7 @@ export function BookingPage({ share = false }: { share?: boolean }) {
                     </button>
                   ))}
                 </div>
-                {loadingSlots && <Notice>Loading slots...</Notice>}
+                {loadingSlots && slots.length > 0 && <Notice>Refreshing slots...</Notice>}
                 {!loadingSlots && slots.length === 0 && <Notice>No slots available for this date.</Notice>}
                 {!loadingSlots && slots.length === 0 && waitlistEnabled && (
                   <Button type="button" variant="secondary" onClick={handleJoinWaitlist}>
@@ -339,10 +371,17 @@ export function BookingPage({ share = false }: { share?: boolean }) {
             <div>{detail?.requires_confirmation ? "Organiser confirmation required" : "Auto-confirmed after booking"}</div>
           </div>
         )}
-        <Button className="mt-5 w-full" disabled={!slotId || saving || missingRequired || detail?.resources.length === 0}>
-          <CalendarDays size={17} />
-          {!auth.user ? "Sign in to confirm" : saving ? "Confirming" : "Confirm booking"}
-        </Button>
+        {selectedSlotIsWaitlist ? (
+          <Button type="button" className="mt-5 w-full bg-amber-600 text-white hover:bg-amber-700" onClick={handleJoinWaitlist}>
+            <CalendarDays size={17} />
+            {!auth.user ? "Sign in to join waitlist" : "Join waitlist"}
+          </Button>
+        ) : (
+          <Button className="mt-5 w-full" disabled={!slotId || saving || missingRequired || detail?.resources.length === 0}>
+            <CalendarDays size={17} />
+            {!auth.user ? "Sign in to confirm" : saving ? "Confirming" : "Confirm booking"}
+          </Button>
+        )}
         <div className="mt-4 rounded-md border border-line bg-white p-3 text-sm">
           <div className="font-semibold text-ink">Calendar access</div>
           <p className="mt-1 text-neutral-600">Connect Google Calendar to check conflicts before you book.</p>
@@ -353,6 +392,40 @@ export function BookingPage({ share = false }: { share?: boolean }) {
         </div>
       </aside>
     </form>
+  )
+}
+
+function BookingPageSkeleton() {
+  return (
+    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <section className="grid gap-5">
+        <div className="border-b border-line pb-5">
+          <Skeleton className="h-10 w-72" />
+          <div className="mt-4 flex gap-3">
+            <Skeleton className="h-5 w-28" />
+            <Skeleton className="h-5 w-40" />
+          </div>
+        </div>
+        <div className="grid gap-5 rounded-md border border-line bg-paper p-4">
+          <Skeleton className="h-16 w-full bg-white" />
+          <Skeleton className="h-[360px] w-full bg-white" />
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+            {Array.from({ length: 12 }, (_, index) => (
+              <Skeleton key={index} className="h-[58px] border border-line bg-white" />
+            ))}
+          </div>
+          <Skeleton className="h-16 w-full bg-white" />
+        </div>
+      </section>
+      <aside className="h-fit rounded-md border border-line bg-paper p-4 shadow-panel">
+        <Skeleton className="h-6 w-28" />
+        <div className="mt-5">
+          <SkeletonText lines={4} />
+        </div>
+        <Skeleton className="mt-5 h-12 w-full" />
+        <Skeleton className="mt-4 h-32 w-full bg-white" />
+      </aside>
+    </div>
   )
 }
 

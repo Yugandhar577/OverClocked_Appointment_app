@@ -28,8 +28,8 @@ export async function getBooking(id: string): Promise<Booking> {
   return res.data
 }
 
-export async function myAppointments(status?: string): Promise<Paginated<Booking>> {
-  const res = await api.get<Paginated<Booking>>("/me/appointments", { params: { status } })
+export async function myAppointments(status?: string, page = 1, pageSize = 10): Promise<Paginated<Booking>> {
+  const res = await api.get<Paginated<Booking>>("/me/appointments", { params: { status, page, page_size: pageSize } })
   return res.data
 }
 
@@ -43,8 +43,14 @@ export async function rescheduleBooking(id: string, new_slot_id: string): Promis
   return res.data
 }
 
-export async function organiserBookings(): Promise<Paginated<Booking>> {
-  const res = await api.get<Paginated<Booking>>("/organiser/bookings")
+export async function organiserBookings(params: { status?: string | null; page?: number; pageSize?: number } = {}): Promise<Paginated<Booking>> {
+  const res = await api.get<Paginated<Booking>>("/organiser/bookings", {
+    params: {
+      status: params.status === "all" ? undefined : params.status,
+      page: params.page ?? 1,
+      page_size: params.pageSize ?? 10,
+    },
+  })
   return res.data
 }
 

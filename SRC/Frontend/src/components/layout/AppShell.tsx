@@ -3,8 +3,6 @@ import {
   Building2,
   CalendarDays,
   CalendarPlus,
-  ChevronDown,
-  LayoutDashboard,
   LogOut,
   Package,
   Palette,
@@ -16,7 +14,7 @@ import {
   UserRoundCheck,
   Users,
 } from "lucide-react"
-import { type FormEvent, useEffect, useRef, useState } from "react"
+import { type FormEvent, useEffect, useState } from "react"
 import { Link, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from "react-router-dom"
 
 import { useAuth } from "../../auth/useAuth"
@@ -83,7 +81,7 @@ export function AppShell() {
   return (
     <div className="min-h-screen">
       <header className="border-b border-line bg-paper/90 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 py-3">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 py-3 md:flex-nowrap md:justify-between">
           <Link
             to="/"
             className="order-1 flex shrink-0 items-center gap-3 font-bold tracking-normal text-ink md:order-none"
@@ -114,10 +112,10 @@ export function AppShell() {
             {isOrganiser && <NavItem to="/admin">Dashboard</NavItem>}
             {isOrganiser && <NavItem to="/organiser/types">Types</NavItem>}
             {isOrganiser && <NavItem to="/organiser/bookings">Bookings</NavItem>}
-            {isAdmin && <AdminDropdown />}
+            {isAdmin && <AdminNavItems />}
           </nav>
 
-          <AppointmentSearchBar />
+          {(!user || isCustomer) && <AppointmentSearchBar />}
 
           <div className="order-5 hidden shrink-0 items-center gap-2 md:order-none md:flex">
             {user ? (
@@ -154,7 +152,7 @@ export function AppShell() {
           <MobileNav to="/login" icon={<User size={18} />} label="Login" />
         )}
         {isOrganiser ? (
-          <MobileNav to="/organiser/bookings" icon={<LayoutDashboard size={18} />} label="Org" />
+          <MobileNav to="/organiser/bookings" icon={<CalendarPlus size={18} />} label="Bookings" />
         ) : (
           <MobileNav to="/signup" icon={<UserPlus size={18} />} label="Join" />
         )}
@@ -170,25 +168,15 @@ export function AppShell() {
   )
 }
 
-function AdminDropdown() {
-  const [open, setOpen] = useState(false)
+function AdminNavItems() {
   const [flags, setFlags] = useState(DEFAULT_FEATURE_FLAGS)
-  const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     loadFeatureFlags().then(setFlags)
   }, [])
 
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener("mousedown", handleClick)
-    return () => document.removeEventListener("mousedown", handleClick)
-  }, [])
-
   const items = [
-    { to: "/admin", label: "Dashboard", icon: <LayoutDashboard size={15} /> },
+    { to: "/admin", label: "Dashboard", icon: <Shield size={15} /> },
     flags.ENABLE_APPOINTMENT_ANALYTICS && { to: "/admin/analytics", label: "Analytics", icon: <BarChart3 size={15} /> },
     flags.ENABLE_WAITLIST && { to: "/admin/waitlist", label: "Waitlist", icon: <UserRoundCheck size={15} /> },
     flags.ENABLE_ADMIN_MANUAL_BOOKING && { to: "/admin/manual-booking", label: "Manual booking", icon: <CalendarPlus size={15} /> },
@@ -199,37 +187,11 @@ function AdminDropdown() {
   ].filter((item): item is { to: string; label: string; icon: JSX.Element } => Boolean(item))
 
   return (
-    <div ref={ref} className="relative">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="inline-flex h-9 items-center gap-1.5 rounded-md px-3 text-sm font-semibold text-ink transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-signal focus:ring-offset-2 focus:ring-offset-paper"
-      >
-        <Shield size={15} />
-        Admin
-        <ChevronDown size={13} className={`transition-transform ${open ? "rotate-180" : ""}`} />
-      </button>
-      {open && (
-        <div className="absolute right-0 top-full z-50 mt-1.5 w-48 overflow-hidden rounded-xl border border-line bg-white py-1 shadow-panel">
-          {items.map(({ to, label, icon }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={to === "/admin"}
-              onClick={() => setOpen(false)}
-              className={({ isActive }) =>
-                [
-                  "flex items-center gap-2.5 px-3 py-2 text-sm font-semibold transition",
-                  isActive ? "bg-ink text-paper" : "text-ink hover:bg-paper",
-                ].join(" ")
-              }
-            >
-              {icon}
-              {label}
-            </NavLink>
-          ))}
-        </div>
-      )}
-    </div>
+    <>
+      {items.map(({ to, label, icon }) => (
+        <NavItem key={to} to={to}>{icon}{label}</NavItem>
+      ))}
+    </>
   )
 }
 
@@ -238,7 +200,7 @@ function NavItem({ to, children }: { to: string; children: React.ReactNode }) {
     <NavLink
       to={to}
       className={({ isActive }) =>
-        `rounded-md px-3 py-2 text-sm font-semibold ${isActive ? "bg-ink text-paper" : "text-ink hover:bg-white"}`
+        `inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-semibold ${isActive ? "bg-ink text-paper" : "text-ink hover:bg-white"}`
       }
     >
       {children}

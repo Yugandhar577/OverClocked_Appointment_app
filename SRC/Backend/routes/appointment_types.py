@@ -66,8 +66,8 @@ def _detail_response(detail: dict) -> AppointmentTypeDetail:
 @router.get("", response_model=Paginated)
 async def list_appointment_types(
     published: bool | None = Query(default=True),
-    page: int = 1,
-    page_size: int = 20,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=50),
     session: AsyncSession = Depends(get_db),
 ):
     items, total = await appointment_type_service.list_public(session, published, page, page_size)

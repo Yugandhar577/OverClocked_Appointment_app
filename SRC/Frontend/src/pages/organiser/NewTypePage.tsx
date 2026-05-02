@@ -147,6 +147,9 @@ export function NewTypePage() {
   const [composerMode, setComposerMode] = useState<"message" | "note" | null>(null)
   const [composerText, setComposerText] = useState("")
   const [postingActivity, setPostingActivity] = useState(false)
+  const [coverImageCompressed, setCoverImageCompressed] = useState<string | null>(null)
+  const [coverImageCacheKey, setCoverImageCacheKey] = useState<string | null>(null)
+  const [coverImagePreview, setCoverImagePreview] = useState<string>("")
 
   const totalResourceCapacity = useMemo(() => resources.reduce((sum, resource) => sum + Number(resource.capacity || 0), 0), [resources])
   const displayCapacity = manageCapacity ? Math.max(1, capacity || totalResourceCapacity || 1) : 1
@@ -198,6 +201,9 @@ export function NewTypePage() {
     setCancellationEmailTemplate(detail.cancellation_email_template || "Appointment: Appointment Canceled")
     setReminderEmailHours(detail.reminder_email_hours ?? 3)
     setReminderSmsHours(detail.reminder_sms_hours ?? 1)
+    setCoverImageCompressed(detail.cover_image_compressed ?? null)
+    setCoverImageCacheKey(detail.cover_image_cache_key ?? null)
+    setCoverImagePreview(loadCachedCoverImage(detail.cover_image_cache_key) || detail.image_url || detail.cover_image_compressed || "")
     setResources(detail.resources.length ? detail.resources.map((resource) => ({
       id: resource.id,
       name: resource.name,
@@ -252,6 +258,8 @@ export function NewTypePage() {
         cancellation_email_template: cancellationEmailTemplate,
         reminder_email_hours: reminderEmailHours,
         reminder_sms_hours: reminderSmsHours,
+        cover_image_compressed: coverImageCompressed,
+        cover_image_cache_key: coverImageCacheKey,
       }
       const id = appointmentTypeId
         ? (await updateAppointmentType(appointmentTypeId, payload)).id
@@ -414,6 +422,24 @@ export function NewTypePage() {
     }
   }
 
+  async function handleCoverImage(file: File | null) {
+    if (!file) return
+    setMessage("")
+    try {
+      const original = await readFileAsDataUrl(file)
+      const compressed = await compressImage(original)
+      const cacheKey = `appointment-cover:${appointmentTypeId || "draft"}:${Date.now()}`
+      localStorage.setItem(cacheKey, original)
+      setImageUrl(compressed)
+      setCoverImageCompressed(compressed)
+      setCoverImageCacheKey(cacheKey)
+      setCoverImagePreview(original)
+      setMessage("Image ready. Compressed copy will be saved to the database; original is cached in this browser.")
+    } catch {
+      setMessage("Could not process that image. Try a smaller PNG or JPG.")
+    }
+  }
+
   if (loading) return <Notice>Loading appointment type...</Notice>
 
   return (
@@ -485,11 +511,34 @@ export function NewTypePage() {
                 </TwoColumn>
               </section>
 
-              <section className="grid content-start gap-4">
-                <label className="ml-auto grid h-28 w-28 cursor-pointer place-items-center overflow-hidden border border-line bg-white text-neutral-400">
-                  {imageUrl ? <img src={imageUrl} alt="" className="h-full w-full object-cover" /> : <ImagePlus size={58} />}
-                  <input type="file" accept="image/*" className="hidden" onChange={(event) => handleImageFile(event.target.files?.[0])} />
-                </label>
+              <section className="grid content-start gap-4 rounded-md border border-line bg-white p-5 shadow-sm">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-neutral-500">Assignment</p>
+                    <h2 className="text-lg font-bold text-ink">Staff and resources</h2>
+                  </div>
+                  <label className="group relative h-20 w-20 shrink-0 cursor-pointer overflow-hidden rounded-md border border-line bg-paper text-neutral-400">
+                    {coverImagePreview || imageUrl ? (
+                      <img src={coverImagePreview || imageUrl} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="grid h-full w-full place-items-center">
+                        <ImagePlus size={42} />
+                      </span>
+                    )}
+                    <span className="absolute inset-0 hidden place-items-center bg-black/45 text-xs font-bold text-white group-hover:grid">
+                      Change
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      className="sr-only"
+                      onChange={(event) => handleCoverImage(event.target.files?.[0] ?? null)}
+                    />
+                  </label>
+                </div>
+                <p className="text-xs text-neutral-600">
+                  Upload an image once: a small compressed copy is stored with the appointment type, and the original stays cached in this browser for sharper previews.
+                </p>
                 <TwoColumn label="Book">
                   <RadioRow value={bookBy} onChange={setBookBy} options={[["user", "Users"], ["resource", "Resources"]]} />
                 </TwoColumn>
@@ -853,4 +902,44 @@ function CheckboxLine({ label, checked, onChange, children }: { label: string; c
       </label>
     </TwoColumn>
   )
+}
+
+function loadCachedCoverImage(cacheKey?: string | null) {
+  if (!cacheKey) return ""
+  try {
+    return localStorage.getItem(cacheKey) || ""
+  } catch {
+    return ""
+  }
+}
+
+function readFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result || ""))
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(file)
+  })
+}
+
+function compressImage(dataUrl: string) {
+  return new Promise<string>((resolve, reject) => {
+    const image = new Image()
+    image.onload = () => {
+      const maxSide = 360
+      const scale = Math.min(1, maxSide / Math.max(image.width, image.height))
+      const canvas = document.createElement("canvas")
+      canvas.width = Math.max(1, Math.round(image.width * scale))
+      canvas.height = Math.max(1, Math.round(image.height * scale))
+      const context = canvas.getContext("2d")
+      if (!context) {
+        reject(new Error("canvas_unavailable"))
+        return
+      }
+      context.drawImage(image, 0, 0, canvas.width, canvas.height)
+      resolve(canvas.toDataURL("image/jpeg", 0.62))
+    }
+    image.onerror = () => reject(new Error("image_load_failed"))
+    image.src = dataUrl
+  })
 }

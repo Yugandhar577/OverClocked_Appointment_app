@@ -1,13 +1,8 @@
 import {
-  BarChart3,
   Building2,
   CalendarClock,
   Download,
-  LayoutGrid,
-  List,
   RefreshCw,
-  Search,
-  SlidersHorizontal,
   Users,
 } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
@@ -91,6 +86,24 @@ export function AdminDashboardPage() {
     { label: "Appointments", count: stats?.total_appointments ?? 0, href: "/admin/analytics" },
   ]
 
+  function exportSummary() {
+    const payload = {
+      exported_at: new Date().toISOString(),
+      metrics: rows,
+      appointments_by_status: stats?.appointments_by_status ?? {},
+      flagged_organizations: flaggedOrgs,
+    }
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = "admin-dashboard-summary.json"
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <section className="space-y-4">
       <div className="flex flex-col gap-3 border-b border-line pb-4 lg:flex-row lg:items-center lg:justify-between">
@@ -103,23 +116,6 @@ export function AdminDashboardPage() {
             <p className="text-sm text-neutral-600">System overview for users, organizations, and appointments</p>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex h-10 min-w-72 items-center gap-2 rounded-md border border-line bg-white px-3">
-            <Search size={17} className="text-neutral-500" />
-            <span className="rounded bg-[var(--odoo-sidebar)] px-2 py-1 text-xs font-semibold text-neutral-700">Admin</span>
-            <input className="min-w-0 flex-1 bg-transparent text-sm outline-none" placeholder="Search..." />
-            <SlidersHorizontal size={16} className="text-neutral-500" />
-          </div>
-          <button className="grid h-10 w-10 place-items-center rounded-md border border-line bg-white text-ink">
-            <BarChart3 size={17} />
-          </button>
-          <button className="grid h-10 w-10 place-items-center rounded-md border border-line bg-white text-ink">
-            <LayoutGrid size={17} />
-          </button>
-          <button className="grid h-10 w-10 place-items-center rounded-md border border-line bg-white text-ink">
-            <List size={17} />
-          </button>
-        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -131,7 +127,11 @@ export function AdminDashboardPage() {
           <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
           {loading ? "Refreshing" : `Updated ${timeAgo(lastRefreshed.toISOString())}`}
         </button>
-        <button className="inline-flex h-10 items-center gap-2 rounded-md border border-line bg-white px-3 text-sm font-semibold text-ink">
+        <button
+          type="button"
+          onClick={exportSummary}
+          className="inline-flex h-10 items-center gap-2 rounded-md border border-line bg-white px-3 text-sm font-semibold text-ink hover:border-[var(--odoo-primary)]"
+        >
           <Download size={16} />
           Export
         </button>

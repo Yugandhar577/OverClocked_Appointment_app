@@ -70,6 +70,8 @@ class AppointmentType(Base):
     reminder_email_hours: Mapped[int | None] = mapped_column(Integer, default=3)
     reminder_sms_hours: Mapped[int | None] = mapped_column(Integer, default=1)
     slot_interval_minutes: Mapped[int | None] = mapped_column(Integer)
+    cover_image_compressed: Mapped[str | None] = mapped_column(Text)
+    cover_image_cache_key: Mapped[str | None] = mapped_column(String(120))
     padding_minutes: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(

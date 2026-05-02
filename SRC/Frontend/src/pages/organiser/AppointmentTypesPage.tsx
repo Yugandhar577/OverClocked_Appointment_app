@@ -7,6 +7,7 @@ import { errorMessage } from "../../api/client"
 import type { AppointmentTypeListItem } from "../../api/types"
 import { Button } from "../../components/ui/Button"
 import { Notice } from "../../components/ui/Notice"
+import { Skeleton, SkeletonText } from "../../components/ui/Skeleton"
 
 const presets = [
   {
@@ -37,20 +38,30 @@ const presets = [
 
 export function AppointmentTypesPage() {
   const navigate = useNavigate()
+  const pageSize = 8
   const [items, setItems] = useState<Array<AppointmentTypeListItem & { published: boolean }>>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [message, setMessage] = useState("")
   const [query, setQuery] = useState("")
   const [showPresets, setShowPresets] = useState(false)
+  const [publishedPage, setPublishedPage] = useState(1)
+  const [draftPage, setDraftPage] = useState(1)
+  const [publishedTotal, setPublishedTotal] = useState(0)
+  const [draftTotal, setDraftTotal] = useState(0)
 
   useEffect(() => {
-    Promise.all([listAppointmentTypes(true), listAppointmentTypes(false)])
-      .then(([published, drafts]) =>
+    Promise.all([listAppointmentTypes(true, 1, pageSize), listAppointmentTypes(false, 1, pageSize)])
+      .then(([published, drafts]) => {
         setItems([
           ...published.items.map((item) => ({ ...item, published: true })),
           ...drafts.items.map((item) => ({ ...item, published: false })),
-        ]),
-      )
+        ])
+        setPublishedPage(published.page)
+        setDraftPage(drafts.page)
+        setPublishedTotal(published.total)
+        setDraftTotal(drafts.total)
+      })
       .catch((err) => setMessage(errorMessage(err)))
       .finally(() => setLoading(false))
   }, [])
@@ -73,6 +84,30 @@ export function AppointmentTypesPage() {
   function startPreset(preset: string) {
     setShowPresets(false)
     navigate(`/organiser/types/new?preset=${preset}`)
+  }
+
+  async function loadMore() {
+    setMessage("")
+    setLoadingMore(true)
+    try {
+      const publishedCount = items.filter((item) => item.published).length
+      const draftCount = items.filter((item) => !item.published).length
+      const nextPublished =
+        publishedCount < publishedTotal ? await listAppointmentTypes(true, publishedPage + 1, pageSize) : null
+      const nextDrafts =
+        draftCount < draftTotal ? await listAppointmentTypes(false, draftPage + 1, pageSize) : null
+      setItems((current) => [
+        ...current,
+        ...(nextPublished?.items.map((item) => ({ ...item, published: true })) ?? []),
+        ...(nextDrafts?.items.map((item) => ({ ...item, published: false })) ?? []),
+      ])
+      if (nextPublished) setPublishedPage(nextPublished.page)
+      if (nextDrafts) setDraftPage(nextDrafts.page)
+    } catch (err) {
+      setMessage(errorMessage(err))
+    } finally {
+      setLoadingMore(false)
+    }
   }
 
   return (
@@ -108,7 +143,25 @@ export function AppointmentTypesPage() {
         </div>
 
         {message && <div className="p-4"><Notice>{message}</Notice></div>}
-        {loading && <div className="p-4"><Notice>Loading appointment types...</Notice></div>}
+        {loading && (
+          <div className="divide-y divide-line">
+            {Array.from({ length: 4 }, (_, index) => (
+              <div key={index} className="grid gap-3 p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+                <div>
+                  <Skeleton className="h-6 w-56 bg-white" />
+                  <div className="mt-3 max-w-sm">
+                    <SkeletonText lines={2} />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Skeleton className="h-10 w-24 bg-white" />
+                  <Skeleton className="h-10 w-32 bg-white" />
+                  <Skeleton className="h-10 w-10 bg-white" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="divide-y divide-line">
           {visibleItems.map((item) => (
@@ -151,6 +204,13 @@ export function AppointmentTypesPage() {
         </div>
 
         {!loading && visibleItems.length === 0 && <div className="p-4"><Notice>No appointment types yet.</Notice></div>}
+        {!query && items.length < publishedTotal + draftTotal && (
+          <div className="border-t border-line p-4 text-center">
+            <Button type="button" variant="secondary" onClick={loadMore} disabled={loadingMore}>
+              {loadingMore ? "Loading..." : `Load more types (${items.length}/${publishedTotal + draftTotal})`}
+            </Button>
+          </div>
+        )}
       </section>
 
       <div className="grid gap-3 md:grid-cols-3">
