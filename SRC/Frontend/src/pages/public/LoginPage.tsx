@@ -18,6 +18,8 @@ const demoAccounts = [
   { label: "Admin", email: "admin@test.local", password: "Admin123!" },
 ]
 
+const googleClientId = (import.meta.env.VITE_GOOGLE_CLIENT_ID ?? "").trim()
+
 export function LoginPage() {
   const auth = useAuth()
   const navigate = useNavigate()
@@ -124,25 +126,29 @@ export function LoginPage() {
         <div className="flex items-center justify-between"><span>Admin tools</span><strong>Analytics + theme</strong></div>
       </div>
 
-      <div className="relative flex items-center gap-3">
-        <div className="h-px flex-1 bg-line" />
-        <span className="text-xs text-neutral-400">or continue with</span>
-        <div className="h-px flex-1 bg-line" />
-      </div>
+      {googleClientId ? (
+        <>
+          <div className="relative flex items-center gap-3">
+            <div className="h-px flex-1 bg-line" />
+            <span className="text-xs text-neutral-400">or continue with</span>
+            <div className="h-px flex-1 bg-line" />
+          </div>
 
-      <div className="flex justify-center">
-        <GoogleLogin
-          onSuccess={(res) => {
-            if (res.credential) handleGoogleSuccess(res.credential)
-          }}
-          onError={() => setError("root", { message: "Google sign-in failed. Please try again." })}
-          text="signin_with"
-          shape="rectangular"
-          theme="outline"
-          size="large"
-          width="368"
-        />
-      </div>
+          <div className="flex justify-center">
+            <GoogleLogin
+              onSuccess={(res: { credential?: string }) => {
+                if (res.credential) handleGoogleSuccess(res.credential)
+              }}
+              onError={() => setError("root", { message: "Google sign-in failed. Please try again." })}
+              text="signin_with"
+              shape="rectangular"
+              theme="outline"
+              size="large"
+              width="368"
+            />
+          </div>
+        </>
+      ) : null}
 
       <p className="text-sm text-neutral-700">
         New here?{" "}

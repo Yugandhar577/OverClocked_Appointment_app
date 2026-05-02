@@ -146,7 +146,20 @@ export function BookingPage({ share = false }: { share?: boolean }) {
           value: answers[question.id] ?? "",
         })),
       })
-      navigate(`/booking/${response.booking_id}/confirmation`)
+      if (response.payment_required) {
+        navigate(`/booking/${response.booking_id}/pay`, {
+          state: {
+            summary: {
+              title: detail.title,
+              price: detail.price ?? null,
+              currency: detail.currency,
+              isPaid: detail.is_paid,
+            },
+          },
+        })
+      } else {
+        navigate(`/booking/${response.booking_id}/confirmation`)
+      }
     } catch (err) {
       setError(errorMessage(err))
     } finally {
@@ -341,7 +354,13 @@ export function BookingPage({ share = false }: { share?: boolean }) {
         )}
         <Button className="mt-5 w-full" disabled={!slotId || saving || missingRequired || detail?.resources.length === 0}>
           <CalendarDays size={17} />
-          {!auth.user ? "Sign in to confirm" : saving ? "Confirming" : "Confirm booking"}
+          {!auth.user
+            ? "Sign in to confirm"
+            : saving
+              ? "Confirming"
+              : detail?.is_paid
+                ? "Continue to payment"
+                : "Confirm booking"}
         </Button>
         <div className="mt-4 rounded-md border border-line bg-white p-3 text-sm">
           <div className="font-semibold text-ink">Calendar access</div>

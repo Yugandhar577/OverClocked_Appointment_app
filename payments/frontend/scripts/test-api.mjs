@@ -1,8 +1,8 @@
 /**
  * Smoke-test backend without the browser (no Razorpay signature).
- * Usage: BASE_URL=http://127.0.0.1:8000 npm run test:api
+ * Usage: BASE_URL=http://127.0.0.1:8888 npm run test:api
  */
-const base = process.env.BASE_URL?.replace(/\/$/, "") || "http://127.0.0.1:8000";
+const base = process.env.BASE_URL?.replace(/\/$/, "") || "http://127.0.0.1:8888";
 
 async function main() {
   const log = (...a) => console.log(...a);

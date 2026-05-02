@@ -8,18 +8,20 @@ import { AuthProvider } from "./auth/AuthContext"
 import { ThemeProvider } from "./auth/ThemeProvider"
 import "./styles/index.css"
 
-const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? ""
+const googleClientId = (import.meta.env.VITE_GOOGLE_CLIENT_ID ?? "").trim()
+
+const appTree = (
+  <BrowserRouter>
+    <AuthProvider>
+      <ThemeProvider>
+        <App />
+      </ThemeProvider>
+    </AuthProvider>
+  </BrowserRouter>
+)
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <GoogleOAuthProvider clientId={googleClientId}>
-      <BrowserRouter>
-        <AuthProvider>
-          <ThemeProvider>
-            <App />
-          </ThemeProvider>
-        </AuthProvider>
-      </BrowserRouter>
-    </GoogleOAuthProvider>
+    {googleClientId ? <GoogleOAuthProvider clientId={googleClientId}>{appTree}</GoogleOAuthProvider> : appTree}
   </React.StrictMode>,
 )

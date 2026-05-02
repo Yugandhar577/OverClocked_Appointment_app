@@ -15,6 +15,7 @@ import { ThemeSettingsPage } from "./pages/admin/ThemeSettingsPage"
 import { WaitlistDashboardPage } from "./pages/admin/WaitlistDashboardPage"
 import { BookingPage } from "./pages/booking/BookingPage"
 import { ConfirmationPage } from "./pages/booking/ConfirmationPage"
+import { PaymentCheckoutPage } from "./pages/booking/PaymentCheckoutPage"
 import { MyAppointmentsPage } from "./pages/customer/MyAppointmentsPage"
 import { ProfilePage } from "./pages/customer/ProfilePage"
 import { ReschedulePage } from "./pages/customer/ReschedulePage"
@@ -39,6 +40,7 @@ export function App() {
         <Route path="/book/:appointmentTypeId" element={<BookingPage />} />
         <Route path="/book/share/:shareToken" element={<BookingPage share />} />
         <Route element={<RequireAuth />}>
+          <Route path="/booking/:bookingId/pay" element={<PaymentCheckoutPage />} />
           <Route path="/booking/:bookingId/confirmation" element={<ConfirmationPage />} />
           <Route path="/booking/:bookingId/reschedule" element={<ReschedulePage />} />
           <Route path="/me/appointments" element={<MyAppointmentsPage />} />

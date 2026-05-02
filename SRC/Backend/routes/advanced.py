@@ -137,7 +137,7 @@ async def manual_booking(
         venue=appointment_type.venue,
         organiser_name=organiser_name,
         payment_required=appointment_type.is_paid,
-        payment_url=f"/mock-payments/{appointment.id}" if appointment_type.is_paid else None,
+        payment_url=f"/booking/{appointment.id}/pay" if appointment_type.is_paid else None,
     )
 
 

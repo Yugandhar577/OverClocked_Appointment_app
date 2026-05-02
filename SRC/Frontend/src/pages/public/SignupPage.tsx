@@ -12,6 +12,8 @@ import { Button } from "../../components/ui/Button"
 import { Field, Input } from "../../components/ui/Field"
 import { Notice } from "../../components/ui/Notice"
 
+const googleClientId = (import.meta.env.VITE_GOOGLE_CLIENT_ID ?? "").trim()
+
 export function SignupPage() {
   const navigate = useNavigate()
   const auth = useAuth()
@@ -79,25 +81,29 @@ export function SignupPage() {
         <Button disabled={isSubmitting}>{isSubmitting ? "Creating account…" : "Create account"}</Button>
       </form>
 
-      <div className="relative flex items-center gap-3">
-        <div className="h-px flex-1 bg-line" />
-        <span className="text-xs text-neutral-400">or sign up with</span>
-        <div className="h-px flex-1 bg-line" />
-      </div>
+      {googleClientId ? (
+        <>
+          <div className="relative flex items-center gap-3">
+            <div className="h-px flex-1 bg-line" />
+            <span className="text-xs text-neutral-400">or sign up with</span>
+            <div className="h-px flex-1 bg-line" />
+          </div>
 
-      <div className="flex justify-center">
-        <GoogleLogin
-          onSuccess={(res) => {
-            if (res.credential) handleGoogleSuccess(res.credential)
-          }}
-          onError={() => setError("root", { message: "Google sign-in failed. Please try again." })}
-          text="signup_with"
-          shape="rectangular"
-          theme="outline"
-          size="large"
-          width="368"
-        />
-      </div>
+          <div className="flex justify-center">
+            <GoogleLogin
+              onSuccess={(res: { credential?: string }) => {
+                if (res.credential) handleGoogleSuccess(res.credential)
+              }}
+              onError={() => setError("root", { message: "Google sign-in failed. Please try again." })}
+              text="signup_with"
+              shape="rectangular"
+              theme="outline"
+              size="large"
+              width="368"
+            />
+          </div>
+        </>
+      ) : null}
 
       <Link className="text-sm font-semibold text-signal" to="/login">
         Back to login

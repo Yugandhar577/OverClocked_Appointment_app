@@ -153,6 +153,38 @@ export interface BookingCreateResponse {
   payment_url?: string | null
 }
 
+export interface PaymentInitiateResponse {
+  key_id: string
+  order_id: string
+  amount_paise: number
+  currency: string
+  appointment_id: string
+  description: string
+  customer_email: string | null
+  customer_contact: string | null
+  prefill_name: string | null
+  prefill_contact: string
+  display_config: Record<string, unknown> | null
+  mock_checkout?: boolean
+}
+
+export interface PaymentVerifyResponse {
+  payment_id: string
+  status: string
+  razorpay_payment_id: string
+  appointment_status: string
+}
+
+export interface PaymentStatusResponse {
+  appointment_id: string
+  payment_status: string | null
+  amount: string | null
+  currency: string | null
+  paid_at: string | null
+  payment_gateway_ref: string | null
+  last_error?: string | null
+}
+
 export interface AdminUser extends User {
   created_at: string
   organization_id?: string | null

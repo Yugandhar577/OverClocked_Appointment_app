@@ -31,6 +31,10 @@ services:
       SMTP_HOST: mailhog
       # Override with your real Google OAuth client ID to enable Google sign-in
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      # Host `.env` (project root) is read by Compose for substitution — add keys there for real Razorpay checkout
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
+      MOCK_PAYMENTS: ${MOCK_PAYMENTS:-}
     ports:
       - "8000:8000"
     volumes:
@@ -49,7 +53,9 @@ services:
     build:
       context: SRC/Frontend
     environment:
-      VITE_API_BASE_URL: http://localhost:8000/api/v1
+      # Relative URL so the browser talks to Vite only; Vite proxies /api → backend (see vite.config.ts).
+      VITE_API_BASE_URL: /api/v1
+      BACKEND_PROXY_TARGET: http://backend:8000
       VITE_APP_NAME: OverClocked Appointments
       # Override with your real Google OAuth client ID to enable Google sign-in
       VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-}

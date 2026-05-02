@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -34,6 +34,17 @@ class Settings(BaseSettings):
     enable_theme_customization: bool = False
     enable_odoo_style_ui: bool = False
     google_client_id: str = ""
+    razorpay_key_id: str = ""
+    razorpay_key_secret: str = ""
+    # When true, checkout uses a server-side mock (no Razorpay). Never enable in production.
+    mock_payments: bool = False
+
+    @field_validator("razorpay_key_id", "razorpay_key_secret", mode="before")
+    @classmethod
+    def strip_razorpay_secrets(cls, v: object) -> object:
+        if isinstance(v, str):
+            return v.strip()
+        return v
 
 
 @lru_cache

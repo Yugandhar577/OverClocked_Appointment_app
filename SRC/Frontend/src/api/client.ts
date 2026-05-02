@@ -1,7 +1,8 @@
 import axios from "axios"
 
+/** Default `/api/v1` hits the Vite dev proxy (see vite.config.ts) — avoids CORS and Docker localhost issues. */
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1",
+  baseURL: import.meta.env.VITE_API_BASE_URL ?? "/api/v1",
   timeout: 15_000,
 })
 
@@ -48,7 +49,7 @@ export function errorMessage(error: unknown): string {
     }
     const status = error.response?.status
     if (!error.response) {
-      return "Cannot reach the API. Is the backend running (e.g. http://localhost:8000)?"
+      return "Cannot reach the API. Start the backend on port 8000 (or rebuild the Docker backend image after dependency changes). With Docker Compose, open http://localhost:5173 so /api is proxied to the backend. For local `npm run dev`, set BACKEND_PROXY_TARGET if the API is not on 127.0.0.1:8000."
     }
     if (status === 401) return API_MESSAGES.invalid_credentials
     return error.message

@@ -12,7 +12,7 @@ Stack matches `docs/appointment_db_design.docx` for the payment slice: **Postgre
 
 ## Troubleshooting
 
-- **Port 8000 already in use:** Either stop the other process using 8000, or run `uvicorn app.main:app --host 127.0.0.1 --port 8001` and set `payments/frontend/vite.config.ts` proxy `target` to `http://127.0.0.1:8001` (or run `npm run test:api` with `BASE_URL=http://127.0.0.1:8001`).
+- **Port 8888 already in use:** Run `uvicorn ... --port 8890` and set `PAYMENTS_API_PORT=8890` when starting Vite (`PAYMENTS_API_PORT=8890 npm run dev` from `frontend/`).
 
 ## Security
 
@@ -42,14 +42,14 @@ copy .env.example .env   # Windows — then edit .env
 # cp .env.example .env   # macOS/Linux
 
 alembic upgrade head
-uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8888
 ```
 
 Set in `.env`:
 
 - `DATABASE_URL` — default matches Docker Compose (`localhost:5435`).
 - `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` — test mode keys from the dashboard.
-- `CORS_ORIGINS` — include `http://127.0.0.1:5173` for the Vite dev server.
+- `CORS_ORIGINS` — include `http://127.0.0.1:5174` and `http://localhost:5174` for the standalone payments UI (default Vite port). The main OverClocked app can keep using 5173.
 
 ## 3. Frontend (React + Vite + Tailwind v4)
 
@@ -59,18 +59,18 @@ npm install
 npm run dev
 ```
 
-Open the URL Vite prints (default `http://localhost:5173/`). The UI includes an API health badge, step progress, seed + checkout actions, copyable IDs, and live payment status polling.
+Open **`http://localhost:5174/`** (standalone default; avoids clashing with the main app on 5173). The UI includes an API health badge, step progress, seed + checkout actions, copyable IDs, and live payment status polling. The API runs on **`http://127.0.0.1:8888`** by default.
 
 Use [Razorpay test cards / methods](https://razorpay.com/docs/payments/payments/test-card-upi-details/) to complete checkout in the browser (this exercises `POST /api/payments/verify`).
 
 ### Automated API smoke test (no browser)
 
-With the backend running on port 8000:
+With the backend running on port 8888:
 
 ```bash
 cd frontend
 npm run test:api
-# optional: BASE_URL=http://127.0.0.1:9000 npm run test:api
+# optional: BASE_URL=http://127.0.0.1:8890 npm run test:api
 ```
 
 This calls `GET /health`, `POST /api/demo/reset-and-seed`, `POST /api/payments/initiate`, and `GET /api/payments/status/{id}` (Razorpay order creation uses your test keys).
