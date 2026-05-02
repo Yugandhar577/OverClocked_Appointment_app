@@ -10,6 +10,7 @@ from SRC.Backend.db.models import (
     AppointmentTypeResource,
     BookingRule,
     GeneratedSlot,
+    Organization,
     Resource,
     Role,
     User,
@@ -61,21 +62,65 @@ async def main() -> None:
                 "otp_verifications",
                 "user_roles",
                 "users",
+                "organizations",
             ]:
                 await session.execute(text(f"TRUNCATE TABLE {table} RESTART IDENTITY CASCADE"))
         async with session.begin():
             await ensure_default_roles(session)
             admin = await create_user(session, "Admin User", "admin@test.local", "Admin123!", ["admin"])
+
+            # ── organizations ──────────────────────────────────────────────
+            acme = Organization(name="Acme Clinics", domain="acme.demo", status="active")
+            beta = Organization(name="Beta Labs", domain="beta.demo", status="active")
+            gamma = Organization(name="Gamma Health", domain="gamma.health", status="active")
+            delta = Organization(name="Delta Physio", domain="delta.physio", status="inactive")
+            epsilon = Organization(
+                name="Epsilon Dental",
+                domain="epsilon.dental",
+                status="flagged",
+                admin_report_notes="Multiple complaint tickets filed. Under review.",
+            )
+            session.add_all([acme, beta, gamma, delta, epsilon])
+            await session.flush()
+
+            # ── organisers ────────────────────────────────────────────────
             org1 = await create_user(session, "Organiser One", "org1@test.local", "Organiser123!", ["organiser"])
             org2 = await create_user(session, "Organiser Two", "org2@test.local", "Organiser123!", ["organiser"])
+            org3 = await create_user(session, "Dr. Ramesh Sharma", "ramesh@acme.demo", "Organiser123!", ["organiser"])
+            org4 = await create_user(session, "Priya Nair", "priya@gamma.health", "Organiser123!", ["organiser"])
+            org5 = await create_user(session, "Vikram Singh", "vikram@gamma.health", "Organiser123!", ["organiser"])
+            org1.organization_id = acme.id
+            org2.organization_id = beta.id
+            org3.organization_id = acme.id
+            org4.organization_id = gamma.id
+            org5.organization_id = gamma.id
+            await session.flush()
+
+            # ── customers ────────────────────────────────────────────────
             customers = [
                 await create_user(session, f"Customer {index}", f"cust{index}@test.local", "Customer123!", ["customer"])
                 for index in range(1, 6)
             ]
+            extra_customers = [
+                await create_user(session, name, email, "Customer123!", ["customer"])
+                for name, email in [
+                    ("Arjun Mehta", "arjun@gamma.health"),
+                    ("Sneha Patil", "sneha@beta.demo"),
+                    ("Ravi Kumar", "ravi@test.local"),
+                    ("Meera Iyer", "meera@test.local"),
+                    ("Nandini Roy", "nandini@test.local"),
+                ]
+            ]
+            # assign some customers to orgs
+            extra_customers[0].organization_id = gamma.id   # arjun
+            extra_customers[1].organization_id = beta.id    # sneha
+            extra_customers[1].is_active = False
+            await session.flush()
             customer_refs = [
                 SimpleNamespace(id=customer.id, full_name=customer.full_name, email=customer.email, phone=customer.phone)
                 for customer in customers
             ]
+            _ = extra_customers  # seeded; not used for bookings
 
             consultation = AppointmentType(
                 organiser_id=org1.id,
@@ -214,9 +259,11 @@ async def main() -> None:
             )
 
     print("Seeded demo data.")
-    print("admin@test.local / Admin123!")
-    print("org1@test.local / Organiser123!")
-    print("cust1@test.local / Customer123!")
+    print("admin@test.local   / Admin123!")
+    print("org1@test.local    / Organiser123!")
+    print("ramesh@acme.demo   / Organiser123!")
+    print("priya@gamma.health / Organiser123!")
+    print("cust1@test.local   / Customer123!")
 
 
 if __name__ == "__main__":

@@ -20,17 +20,42 @@ export async function getAppointmentTypeByShare(token: string): Promise<Appointm
 export async function createAppointmentType(payload: {
   title: string
   preset_type?: string
+  description?: string
   duration_minutes: number
   timezone: string
   resource_type: string
+  future_days_limit?: number
   venue?: string
 }) {
   const res = await api.post<AppointmentTypeDetail>("/appointment-types", payload)
   return res.data
 }
 
+export async function updateAppointmentType(
+  appointmentTypeId: string,
+  payload: {
+    title: string
+    preset_type?: string
+    description?: string
+    duration_minutes: number
+    timezone: string
+    resource_type: string
+    future_days_limit?: number
+    venue?: string
+    confirmation_msg?: string
+  },
+) {
+  const res = await api.patch<AppointmentTypeDetail>(`/appointment-types/${appointmentTypeId}`, payload)
+  return res.data
+}
+
 export async function addResource(appointmentTypeId: string, payload: { name: string; capacity: number; resource_type: string }) {
   const res = await api.post<Resource>(`/appointment-types/${appointmentTypeId}/resources`, payload)
+  return res.data
+}
+
+export async function replaceResources(appointmentTypeId: string, payload: Array<{ name: string; capacity: number; resource_type: string }>) {
+  const res = await api.put<Resource[]>(`/appointment-types/${appointmentTypeId}/resources`, payload)
   return res.data
 }
 

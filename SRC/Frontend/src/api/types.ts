@@ -35,6 +35,14 @@ export interface Resource {
   is_active: boolean
 }
 
+export interface WorkingHour {
+  id?: string
+  day_of_week: number
+  start_time: string
+  end_time: string
+  resource_id?: string | null
+}
+
 export interface Question {
   id: string
   question_text: string
@@ -71,6 +79,7 @@ export interface AppointmentTypeDetail {
   confirmation_msg?: string | null
   resources: Resource[]
   questions: Question[]
+  working_hours: WorkingHour[]
 }
 
 export interface AvailabilitySlot {
@@ -91,6 +100,9 @@ export interface Booking {
   status: string
   people_count: number
   confirmation_code: string
+  customer_full_name?: string | null
+  customer_email?: string | null
+  customer_phone?: string | null
   created_at: string
   updated_at: string
   slot_start?: string | null
@@ -113,4 +125,21 @@ export interface BookingCreateResponse {
 
 export interface AdminUser extends User {
   created_at: string
+  organization_id?: string | null
+}
+
+export interface OrganizationListItem {
+  id: string
+  name: string
+  domain: string
+  status: string
+  active_members: number
+  created_at: string
+}
+
+export interface OrganizationDetail extends OrganizationListItem {
+  total_members: number
+  active_instances: number
+  admin_report_notes: string | null
+  updated_at: string
 }

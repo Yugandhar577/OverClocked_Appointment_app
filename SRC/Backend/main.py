@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from SRC.Backend.config import get_settings
 from SRC.Backend.core.errors import register_exception_handlers
 from SRC.Backend.db.session import engine
-from SRC.Backend.routes import admin, appointment_types, auth, bookings, health
+from SRC.Backend.routes import admin, appointment_types, auth, bookings, health, organizations
 
 
 @asynccontextmanager
@@ -32,6 +32,7 @@ def create_app() -> FastAPI:
     app.include_router(appointment_types.router, prefix="/api/v1")
     app.include_router(bookings.router, prefix="/api/v1")
     app.include_router(admin.router, prefix="/api/v1")
+    app.include_router(organizations.router, prefix="/api/v1")
     return app
 
 

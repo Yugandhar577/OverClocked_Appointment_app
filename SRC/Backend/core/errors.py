@@ -111,6 +111,11 @@ class NotFoundError(AppError):
         super().__init__({"detail": "not_found", "resource": resource})
 
 
+class OrganizationDomainExistsError(AppError):
+    status_code = 409
+    detail = "organization_domain_exists"
+
+
 def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(AppError)
     async def app_error_handler(_request: Request, exc: AppError):

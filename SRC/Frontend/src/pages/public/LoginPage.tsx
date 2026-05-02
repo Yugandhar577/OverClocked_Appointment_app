@@ -14,7 +14,7 @@ const demoAccounts = [
 ]
 
 function defaultRouteForRoles(roles: string[]) {
-  if (roles.includes("admin")) return "/admin/users"
+  if (roles.includes("admin")) return "/admin"
   if (roles.includes("organiser")) return "/organiser/types"
   return "/"
 }
