@@ -1,4 +1,4 @@
-import { CalendarDays, ImagePlus, Link2, Package, Plus, Send, Trash2, Users, X } from "lucide-react"
+import { CalendarDays, ExternalLink, ImagePlus, Link2, Package, Plus, Send, Trash2, Users, X } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 
@@ -22,6 +22,7 @@ import type { ActivityItem, AppointmentTypeDetail, ResourceCandidate } from "../
 import { Button } from "../../components/ui/Button"
 import { Input, Textarea } from "../../components/ui/Field"
 import { Notice } from "../../components/ui/Notice"
+import { listMailTemplates } from "../../lib/mailTemplates"
 
 type Tab = "availabilities" | "questions" | "communication" | "options"
 
@@ -102,8 +103,16 @@ export function NewTypePage() {
   const { appointmentTypeId } = useParams()
   const [searchParams] = useSearchParams()
   const initialPreset = searchParams.get("preset") || "meeting"
+  const initialTab = (searchParams.get("tab") as Tab | null) || "availabilities"
+  const activeTabFromQuery: Tab =
+    initialTab === "questions" || initialTab === "communication" || initialTab === "options" ? initialTab : "availabilities"
+  const mailTemplates = useMemo(() => listMailTemplates(), [])
+  const bookingTemplates = mailTemplates.filter((template) => template.type === "booking")
+  const cancellationTemplates = mailTemplates.filter((template) => template.type === "cancellation")
+  const emailReminderTemplates = mailTemplates.filter((template) => template.type === "email_reminder")
+  const smsReminderTemplates = mailTemplates.filter((template) => template.type === "sms_reminder")
 
-  const [activeTab, setActiveTab] = useState<Tab>("availabilities")
+  const [activeTab, setActiveTab] = useState<Tab>(activeTabFromQuery)
   const [message, setMessage] = useState("")
   const [loading, setLoading] = useState(Boolean(appointmentTypeId))
   const [saving, setSaving] = useState(false)
@@ -664,20 +673,51 @@ export function NewTypePage() {
                     <section className="grid content-start gap-5">
                       <h3 className="border-b border-line pb-2 text-sm font-bold uppercase">Emails & SMS</h3>
                       <TwoColumn label="Reminders">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span>Email</span>
-                          <Input type="number" min={0} max={168} value={reminderEmailHours} onChange={(event) => setReminderEmailHours(Number(event.target.value))} className="w-20" />
-                          <span>hours</span>
-                          <span>SMS</span>
-                          <Input type="number" min={0} max={168} value={reminderSmsHours} onChange={(event) => setReminderSmsHours(Number(event.target.value))} className="w-20" />
-                          <span>hours</span>
+                        <div className="flex flex-wrap gap-2">
+                          <span className="rounded-full bg-rose-50 px-3 py-1 text-sm font-semibold text-ink">
+                            Email - {reminderEmailHours} Hours
+                            <button type="button" className="ml-2" onClick={() => setReminderEmailHours(0)}>x</button>
+                          </span>
+                          <span className="rounded-full bg-rose-50 px-3 py-1 text-sm font-semibold text-ink">
+                            SMS - {reminderSmsHours} Hours
+                            <button type="button" className="ml-2" onClick={() => setReminderSmsHours(0)}>x</button>
+                          </span>
+                          <button type="button" className="text-sm font-bold text-signal" onClick={() => setReminderEmailHours((value) => value || 3)}>
+                            Add reminder
+                          </button>
                         </div>
                       </TwoColumn>
                       <TwoColumn label="Booking Email ?">
-                        <Input value={bookingEmailTemplate} onChange={(event) => setBookingEmailTemplate(event.target.value)} />
+                        <TemplatePicker
+                          value={bookingEmailTemplate}
+                          templates={bookingTemplates}
+                          fallback="Booking Confirmation"
+                          onChange={setBookingEmailTemplate}
+                        />
                       </TwoColumn>
                       <TwoColumn label="Cancellation Email ?">
-                        <Input value={cancellationEmailTemplate} onChange={(event) => setCancellationEmailTemplate(event.target.value)} />
+                        <TemplatePicker
+                          value={cancellationEmailTemplate}
+                          templates={cancellationTemplates}
+                          fallback="Cancellation (System)"
+                          onChange={setCancellationEmailTemplate}
+                        />
+                      </TwoColumn>
+                      <TwoColumn label="Reminder Email ?">
+                        <TemplatePicker
+                          value=""
+                          templates={emailReminderTemplates}
+                          fallback="Reminder Email (System)"
+                          onChange={() => undefined}
+                        />
+                      </TwoColumn>
+                      <TwoColumn label="Reminder SMS ?">
+                        <TemplatePicker
+                          value=""
+                          templates={smsReminderTemplates}
+                          fallback="Reminder SMS (System)"
+                          onChange={() => undefined}
+                        />
                       </TwoColumn>
                     </section>
                   </div>
@@ -829,6 +869,41 @@ function TwoColumn({ label, children }: { label: string; children: React.ReactNo
     <div className="grid gap-3 sm:grid-cols-[160px_minmax(0,1fr)]">
       <strong className="text-sm text-ink">{label}</strong>
       <div className="min-w-0 text-sm text-ink">{children}</div>
+    </div>
+  )
+}
+
+function TemplatePicker({
+  value,
+  templates,
+  fallback,
+  onChange,
+}: {
+  value: string
+  templates: Array<{ id: string; name: string; type: string; source: string }>
+  fallback: string
+  onChange: (value: string) => void
+}) {
+  const selected = templates.find((template) => template.name === value || template.id === value) ?? templates[0]
+  return (
+    <div className="flex gap-2">
+      <select
+        value={selected?.name ?? value ?? ""}
+        onChange={(event) => onChange(event.target.value)}
+        className="focus-ring h-10 min-w-0 flex-1 rounded-md border border-line bg-white px-3"
+      >
+        {!selected && <option value="">{fallback}</option>}
+        {templates.map((template) => (
+          <option key={template.id} value={template.name}>
+            {template.name} {template.source === "System" ? "(System)" : ""}
+          </option>
+        ))}
+      </select>
+      <Link to={selected ? `/organiser/mail-templates/${selected.id}` : "/organiser/mail-templates"}>
+        <Button type="button" variant="secondary" title="Open template">
+          <ExternalLink size={16} />
+        </Button>
+      </Link>
     </div>
   )
 }

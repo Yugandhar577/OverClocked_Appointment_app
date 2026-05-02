@@ -43,6 +43,8 @@ class Settings(BaseSettings):
     enable_theme_customization: bool = False
     enable_odoo_style_ui: bool = False
     google_client_id: str = ""
+    razorpay_key_id: str = ""
+    razorpay_key_secret: str = ""
 
 
 # Backend note: Reads data and shapes it for the caller without mutating booking state unless noted by the implementation.

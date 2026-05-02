@@ -147,6 +147,10 @@ export function BookingPage({ share = false }: { share?: boolean }) {
           value: answers[question.id] ?? "",
         })),
       })
+      if (response.payment_required) {
+        navigate(`/booking/${response.booking_id}/payment`)
+        return
+      }
       navigate(`/booking/${response.booking_id}/confirmation`)
     } catch (err) {
       setError(errorMessage(err))

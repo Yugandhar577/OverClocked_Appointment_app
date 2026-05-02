@@ -1,4 +1,4 @@
-import { CalendarDays, Copy, Headphones, Link2, Monitor, Package, Plus, Search, Settings, Share2, Users, X } from "lucide-react"
+import { CalendarDays, Copy, Headphones, Link2, Mail, Monitor, Package, Plus, Search, Settings, Share2, Users, Wallet, X } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 
@@ -123,6 +123,18 @@ export function AppointmentTypesPage() {
               <Share2 size={16} />
               Share
             </Button>
+            <Link to={visibleItems[0] ? `/organiser/types/${visibleItems[0].id}?tab=communication` : "#"}>
+              <Button type="button" variant="secondary" disabled={!visibleItems.length}>
+                <Mail size={16} />
+                Emails
+              </Button>
+            </Link>
+            <Link to={visibleItems[0] ? `/organiser/types/${visibleItems[0].id}?tab=options` : "#"}>
+              <Button type="button" variant="secondary" disabled={!visibleItems.length}>
+                <Wallet size={16} />
+                Payments
+              </Button>
+            </Link>
             <div>
               <p className="text-sm font-bold text-signal">Appointments</p>
               <h1 className="flex items-center gap-2 text-2xl font-bold text-ink">
@@ -143,6 +155,32 @@ export function AppointmentTypesPage() {
         </div>
 
         {message && <div className="p-4"><Notice>{message}</Notice></div>}
+        {!loading && visibleItems.length > 0 && (
+          <div className="border-b border-line bg-white p-4">
+            <div className="grid gap-3 rounded-md border border-line bg-paper p-4 md:grid-cols-[1fr_auto] md:items-center">
+              <div>
+                <h2 className="font-bold text-ink">Razorpay payments and organiser emails are active</h2>
+                <p className="mt-1 text-sm text-neutral-700">
+                  Paid appointment types now use Razorpay checkout. Open Emails for confirmation and reminder templates.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Link to={`/organiser/types/${visibleItems[0].id}?tab=options`}>
+                  <Button type="button" variant="secondary">
+                    <Wallet size={16} />
+                    Payment setup
+                  </Button>
+                </Link>
+                <Link to={`/organiser/types/${visibleItems[0].id}?tab=communication`}>
+                  <Button type="button" variant="secondary">
+                    <Mail size={16} />
+                    Email setup
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
         {loading && (
           <div className="divide-y divide-line">
             {Array.from({ length: 4 }, (_, index) => (
@@ -182,6 +220,9 @@ export function AppointmentTypesPage() {
                   </span>
                   <span>{item.is_paid ? `INR ${item.price}` : "Free"}</span>
                   <span className="capitalize">{(item.preset_type || "meeting").replace("_", " ")}</span>
+                  <span className={`rounded-full border px-2 py-1 text-xs font-semibold ${item.is_paid ? "border-indigo-200 bg-indigo-50 text-indigo-800" : "border-neutral-200 bg-neutral-50 text-neutral-700"}`}>
+                    {item.is_paid ? "Razorpay enabled" : "No online payment"}
+                  </span>
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -193,6 +234,18 @@ export function AppointmentTypesPage() {
                   <Button type="button" variant="secondary">
                     <Settings size={16} />
                     Configure
+                  </Button>
+                </Link>
+                <Link to={`/organiser/types/${item.id}?tab=communication`}>
+                  <Button type="button" variant="secondary">
+                    <Mail size={16} />
+                    Emails
+                  </Button>
+                </Link>
+                <Link to={`/organiser/types/${item.id}?tab=options`}>
+                  <Button type="button" variant="secondary">
+                    <Wallet size={16} />
+                    Payments
                   </Button>
                 </Link>
                 <Button type="button" variant="ghost" title="Copy link" onClick={() => copyLink(item.id)}>
@@ -211,6 +264,35 @@ export function AppointmentTypesPage() {
             </Button>
           </div>
         )}
+      </section>
+
+      <section className="grid gap-3 rounded-md border border-line bg-white p-4 md:grid-cols-[1fr_auto] md:items-center">
+        <div className="flex items-start gap-3">
+          <span className="grid h-10 w-10 place-items-center rounded-md bg-paper text-signal">
+            <Mail size={18} />
+          </span>
+          <div>
+            <h2 className="font-bold text-ink">Email & SMS workflows</h2>
+            <p className="mt-1 text-sm text-neutral-700">
+              Configure booking emails, cancellation emails, and reminder timing from the organiser type editor.
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {visibleItems[0] ? (
+            <Link to={`/organiser/types/${visibleItems[0].id}?tab=communication`}>
+              <Button type="button" variant="secondary">
+                <Mail size={16} />
+                Open email section
+              </Button>
+            </Link>
+          ) : (
+            <Button type="button" variant="secondary" disabled>
+              <Mail size={16} />
+              Open email section
+            </Button>
+          )}
+        </div>
       </section>
 
       <div className="grid gap-3 md:grid-cols-3">

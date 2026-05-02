@@ -15,10 +15,13 @@ import { ThemeSettingsPage } from "./pages/admin/ThemeSettingsPage"
 import { WaitlistDashboardPage } from "./pages/admin/WaitlistDashboardPage"
 import { BookingPage } from "./pages/booking/BookingPage"
 import { ConfirmationPage } from "./pages/booking/ConfirmationPage"
+import { PaymentPage } from "./pages/booking/PaymentPage"
 import { MyAppointmentsPage } from "./pages/customer/MyAppointmentsPage"
 import { ProfilePage } from "./pages/customer/ProfilePage"
 import { ReschedulePage } from "./pages/customer/ReschedulePage"
 import { AppointmentTypesPage } from "./pages/organiser/AppointmentTypesPage"
+import { MailTemplateEditorPage } from "./pages/organiser/MailTemplateEditorPage"
+import { MailTemplatesPage } from "./pages/organiser/MailTemplatesPage"
 import { NewTypePage } from "./pages/organiser/NewTypePage"
 import { OrganiserBookingsPage } from "./pages/organiser/OrganiserBookingsPage"
 import { HomePage } from "./pages/public/HomePage"
@@ -39,6 +42,7 @@ export function App() {
         <Route path="/book/:appointmentTypeId" element={<BookingPage />} />
         <Route path="/book/share/:shareToken" element={<BookingPage share />} />
         <Route element={<RequireAuth />}>
+          <Route path="/booking/:bookingId/payment" element={<PaymentPage />} />
           <Route path="/booking/:bookingId/confirmation" element={<ConfirmationPage />} />
           <Route path="/booking/:bookingId/reschedule" element={<ReschedulePage />} />
           <Route path="/me/appointments" element={<MyAppointmentsPage />} />
@@ -49,6 +53,9 @@ export function App() {
           <Route path="/organiser/types/new" element={<NewTypePage />} />
           <Route path="/organiser/types/:appointmentTypeId" element={<NewTypePage />} />
           <Route path="/organiser/bookings" element={<OrganiserBookingsPage />} />
+          <Route path="/organiser/mail-templates" element={<MailTemplatesPage />} />
+          <Route path="/organiser/mail-templates/new" element={<MailTemplateEditorPage />} />
+          <Route path="/organiser/mail-templates/:templateId" element={<MailTemplateEditorPage />} />
         </Route>
         <Route element={<RequireAuth roles={["organiser", "admin"]} />}>
           <Route element={<AdminLayout />}>

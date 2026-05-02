@@ -65,5 +65,6 @@ export function errorMessage(error: unknown): string {
     if (status === 401) return API_MESSAGES.invalid_credentials
     return error.message
   }
+  if (error instanceof Error) return error.message
   return "Something went wrong"
 }

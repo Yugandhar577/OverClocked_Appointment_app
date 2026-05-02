@@ -4,6 +4,7 @@ import {
   CalendarDays,
   CalendarPlus,
   LogOut,
+  Mail,
   Package,
   Palette,
   Search,
@@ -112,6 +113,7 @@ export function AppShell() {
             {isOrganiser && <NavItem to="/admin">Dashboard</NavItem>}
             {isOrganiser && <NavItem to="/organiser/types">Types</NavItem>}
             {isOrganiser && <NavItem to="/organiser/bookings">Bookings</NavItem>}
+            {isOrganiser && <NavItem to="/organiser/mail-templates">Email Templates</NavItem>}
             {isAdmin && <AdminNavItems />}
           </nav>
 
@@ -158,6 +160,8 @@ export function AppShell() {
         )}
         {isAdmin ? (
           <MobileNav to="/admin" icon={<Shield size={18} />} label="Admin" />
+        ) : isOrganiser ? (
+          <MobileNav to="/organiser/mail-templates" icon={<Mail size={18} />} label="Emails" />
         ) : user ? (
           <MobileNav to="/me/profile" icon={<User size={18} />} label="Profile" />
         ) : (
