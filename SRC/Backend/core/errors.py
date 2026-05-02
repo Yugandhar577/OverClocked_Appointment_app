@@ -116,6 +116,16 @@ class OrganizationDomainExistsError(AppError):
     detail = "organization_domain_exists"
 
 
+class GoogleAuthError(AppError):
+    status_code = 401
+    detail = "google_auth_failed"
+
+
+class GoogleNotConfiguredError(AppError):
+    status_code = 501
+    detail = "google_not_configured"
+
+
 def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(AppError)
     async def app_error_handler(_request: Request, exc: AppError):

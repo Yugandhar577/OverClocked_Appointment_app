@@ -29,21 +29,16 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/appointments
       SMTP_HOST: mailhog
+      # Override with your real Google OAuth client ID to enable Google sign-in
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
     ports:
       - "8000:8000"
     volumes:
       # Serve current repo sources without rebuilding after every backend change.
       - .:/app
-    command:
-      [
-        "uvicorn",
-        "SRC.Backend.main:app",
-        "--host",
-        "0.0.0.0",
-        "--port",
-        "8000",
-        "--reload",
-      ]
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn SRC.Backend.main:app --host 0.0.0.0 --port 8000 --reload"
     depends_on:
       postgres:
         condition: service_healthy
@@ -56,11 +51,15 @@ services:
     environment:
       VITE_API_BASE_URL: http://localhost:8000/api/v1
       VITE_APP_NAME: OverClocked Appointments
+      # Override with your real Google OAuth client ID to enable Google sign-in
+      VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-}
     ports:
       - "5173:5173"
     volumes:
       # Mount local sources so UI changes appear without rebuilding the image.
       - ./SRC/Frontend:/app
+      # Isolate node_modules inside the container so host OS differences don't interfere.
+      - frontend_node_modules:/app/node_modules
     command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
     depends_on:
       - backend
@@ -86,3 +85,4 @@ services:
 
 volumes:
   postgres_data:
+  frontend_node_modules:

@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     enable_appointment_analytics: bool = False
     enable_theme_customization: bool = False
     enable_odoo_style_ui: bool = False
+    google_client_id: str = ""
 
 
 @lru_cache

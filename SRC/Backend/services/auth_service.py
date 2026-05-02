@@ -1,7 +1,9 @@
 import random
+import secrets
 from datetime import timedelta
 from uuid import UUID
 
+import httpx
 from sqlalchemy import insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,6 +11,8 @@ from SRC.Backend.core.errors import (
     AccountDisabledError,
     AccountUnverifiedError,
     EmailExistsError,
+    GoogleAuthError,
+    GoogleNotConfiguredError,
     InvalidCredentialsError,
     NotFoundError,
     OtpExpiredError,
@@ -158,6 +162,61 @@ async def forgot_password(session: AsyncSession, email: str) -> None:
             subject="Reset your password",
             body=f"Use this reset token: {token}",
         )
+
+
+async def google_login(session: AsyncSession, id_token: str, google_client_id: str) -> tuple[str, "User", list[str]]:
+    if not google_client_id:
+        raise GoogleNotConfiguredError()
+
+    async with httpx.AsyncClient(timeout=10) as client:
+        response = await client.get(
+            "https://www.googleapis.com/oauth2/v3/tokeninfo",
+            params={"id_token": id_token},
+        )
+
+    if response.status_code != 200:
+        raise GoogleAuthError()
+
+    data = response.json()
+
+    aud = data.get("aud", "")
+    valid_aud = google_client_id in aud if isinstance(aud, list) else aud == google_client_id
+    if not valid_aud:
+        raise GoogleAuthError()
+
+    if not data.get("email_verified"):
+        raise GoogleAuthError()
+
+    email = data.get("email", "").lower()
+    if not email:
+        raise GoogleAuthError()
+
+    full_name = data.get("name") or email.split("@")[0]
+
+    async with session.begin():
+        await ensure_default_roles(session)
+        user = await session.scalar(select(User).where(User.email == email))
+
+        if not user:
+            user = User(
+                full_name=full_name,
+                email=email,
+                password_hash=hash_password(secrets.token_urlsafe(32)),
+                timezone="UTC",
+                is_verified=True,
+            )
+            session.add(user)
+            await session.flush()
+            role = await session.scalar(select(Role).where(Role.name == "customer"))
+            await session.execute(insert(user_roles).values(user_id=user.id, role_id=role.id))
+        elif not user.is_active:
+            raise AccountDisabledError()
+        elif not user.is_verified:
+            user.is_verified = True
+
+    roles = await get_roles_for_user(session, user.id)
+    token = create_access_token(user.id, roles)
+    return token, user, roles
 
 
 async def reset_password(session: AsyncSession, token: str, new_password: str) -> bool:
