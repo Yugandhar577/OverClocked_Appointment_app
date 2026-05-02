@@ -180,7 +180,7 @@ export function BookingPage({ share = false }: { share?: boolean }) {
   }
 
   function slotClass(slot: AvailabilitySlot, selected: boolean) {
-    if (selected) return "border-ink bg-ink text-paper shadow-sm"
+    if (selected) return "border-primary bg-primary text-paper shadow-sm"
     if (slot.status === "full" || slot.remaining_capacity <= 0) return "border-red-200 bg-red-50 text-red-800"
     if (slot.status === "waitlist" || slot.is_waitlist_reserved) return "border-amber-200 bg-amber-50 text-amber-900"
     return "border-green-200 bg-green-50 text-green-900 hover:border-green-500"

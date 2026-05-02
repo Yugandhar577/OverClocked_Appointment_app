@@ -6,7 +6,7 @@ export function AuthShell() {
       <div className="grid w-full max-w-5xl overflow-hidden rounded-xl border border-line bg-white shadow-panel lg:grid-cols-[0.95fr_1.05fr]">
         <section className="hidden bg-[#f5efe3] p-8 lg:block">
           <div className="flex items-center gap-3">
-            <span className="grid h-11 w-11 place-items-center rounded-lg bg-ink text-lg font-bold text-paper">OC</span>
+            <span className="grid h-11 w-11 place-items-center rounded-lg bg-primary text-lg font-bold text-paper">OC</span>
             <div>
               <h1 className="text-2xl font-bold text-ink">OverClocked</h1>
               <p className="text-sm text-neutral-600">Appointment workspace</p>
@@ -25,7 +25,7 @@ export function AuthShell() {
         </section>
         <section className="p-6 md:p-8">
           <div className="mb-7 flex items-center gap-3 lg:hidden">
-            <span className="grid h-10 w-10 place-items-center rounded-md bg-ink text-paper">OC</span>
+            <span className="grid h-10 w-10 place-items-center rounded-md bg-primary text-paper">OC</span>
             <div>
               <h1 className="text-xl font-bold text-ink">OverClocked</h1>
               <p className="text-sm text-neutral-600">Appointment workspace</p>

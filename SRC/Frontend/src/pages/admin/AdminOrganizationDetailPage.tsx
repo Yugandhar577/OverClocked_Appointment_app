@@ -49,7 +49,7 @@ const STATUS_ICON: Record<string, React.ReactNode> = {
 const ROLE_STYLE: Record<string, string> = {
   customer: "bg-blue-50 text-blue-800",
   organiser: "bg-emerald-50 text-emerald-800",
-  admin: "bg-ink text-paper",
+  admin: "bg-primary text-paper",
 }
 
 function initials(name: string) {
@@ -261,7 +261,7 @@ export function AdminOrganizationDetailPage() {
         <div className="flex border-b border-line">
           {([ ["overview", "Overview", <LayoutGrid size={14} />], ["members", "Members", <Users size={14} />], ["audit", "Audit log", <History size={14} />]] as [Tab, string, React.ReactNode][]).map(([id, label, icon]) => (
             <button key={id} onClick={() => setTab(id)}
-              className={["flex items-center gap-2 px-5 py-3.5 text-sm font-semibold transition border-b-2", tab === id ? "border-ink text-ink" : "border-transparent text-neutral-500 hover:text-ink"].join(" ")}>
+              className={["flex items-center gap-2 px-5 py-3.5 text-sm font-semibold transition border-b-2", tab === id ? "border-primary text-primary" : "border-transparent text-neutral-500 hover:text-ink"].join(" ")}>
               {icon}{label}
             </button>
           ))}

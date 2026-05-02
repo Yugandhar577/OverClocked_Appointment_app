@@ -171,7 +171,7 @@ export function AdminOrganizationsPage() {
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => { setStatusFilter(""); setPage(1) }}
-            className={["rounded-full border px-3 py-1 text-xs font-bold transition", !statusFilter ? "border-ink bg-ink text-paper" : "border-line bg-white text-neutral-600 hover:border-ink"].join(" ")}
+            className={["rounded-full border px-3 py-1 text-xs font-bold transition", !statusFilter ? "border-primary bg-primary text-paper" : "border-line bg-white text-neutral-600 hover:border-ink"].join(" ")}
           >
             All · {total}
           </button>
@@ -179,7 +179,7 @@ export function AdminOrganizationsPage() {
             statusCounts[s] !== undefined && (
               <button key={s}
                 onClick={() => { setStatusFilter(s); setPage(1) }}
-                className={["inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold transition", statusFilter === s ? "border-ink bg-ink text-paper" : ["border", STATUS_STYLE[s]].join(" ") + " hover:border-ink"].join(" ")}
+                className={["inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold transition", statusFilter === s ? "border-primary bg-primary text-paper" : ["border", STATUS_STYLE[s]].join(" ") + " hover:border-ink"].join(" ")}
               >
                 {STATUS_ICON[s]}
                 {s.charAt(0).toUpperCase() + s.slice(1)} · {statusCounts[s]}
@@ -289,7 +289,7 @@ export function AdminOrganizationsPage() {
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 p-4 sm:items-center">
           <div className="w-full max-w-md rounded-2xl border border-line bg-paper p-6 shadow-panel">
             <div className="flex items-center gap-3">
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-ink text-paper">
+              <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary text-paper">
                 <Building2 size={18} />
               </div>
               <div>

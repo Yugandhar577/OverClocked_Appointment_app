@@ -99,7 +99,7 @@ export function AdminDashboardPage() {
       {isAdmin && (
         <div className="flex flex-col gap-3 border-b border-line pb-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-3">
-            <Link to="/admin/users" className="rounded-md bg-[var(--odoo-primary)] px-4 py-2 text-sm font-bold text-white">
+            <Link to="/admin/users" className="rounded-md bg-primary px-4 py-2 text-sm font-bold text-white">
               New
             </Link>
             <div>
@@ -173,7 +173,7 @@ export function AdminDashboardPage() {
                   <td className="border-b border-line px-8 py-3">{row.label}</td>
                   <td className="border-b border-line px-4 py-3 text-right font-semibold">{row.count}</td>
                   <td className="border-b border-line px-4 py-3">
-                    <Link className="font-semibold text-[var(--odoo-primary)]" to={row.href}>Open</Link>
+                    <Link className="font-semibold text-primary" to={row.href}>Open</Link>
                   </td>
                 </tr>
               ))}
@@ -222,7 +222,7 @@ export function AdminDashboardPage() {
 }
 
 function Kpi({ label, value, icon, tone = "default" }: { label: string; value: number; icon: React.ReactNode; tone?: "default" | "warning" | "ok" }) {
-  const toneClass = tone === "warning" ? "text-amber-700 bg-amber-50" : tone === "ok" ? "text-emerald-700 bg-emerald-50" : "text-[var(--odoo-primary)] bg-[#f5efe3]"
+  const toneClass = tone === "warning" ? "text-amber-700 bg-amber-50" : tone === "ok" ? "text-emerald-700 bg-emerald-50" : "text-primary bg-[#f5efe3]"
   return (
     <div className="rounded-md border border-line bg-white p-4">
       <div className="flex items-center justify-between">

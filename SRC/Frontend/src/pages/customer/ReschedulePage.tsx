@@ -66,7 +66,7 @@ export function ReschedulePage() {
             type="button"
             onClick={() => setSlotId(slot.slot_id)}
             className={`focus-ring rounded-md border px-3 py-2 text-sm font-semibold ${
-              slotId === slot.slot_id ? "border-ink bg-ink text-paper" : "border-line bg-white"
+              slotId === slot.slot_id ? "border-primary bg-primary text-paper" : "border-line bg-white"
             }`}
           >
             {formatTime(slot.start_datetime)}

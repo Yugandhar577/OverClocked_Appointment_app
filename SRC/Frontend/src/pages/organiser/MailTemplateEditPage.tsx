@@ -193,14 +193,14 @@ export function MailTemplateEditPage() {
           <button
             type="button"
             onClick={() => setTab("body")}
-            className={`px-5 py-3 text-sm font-bold ${tab === "body" ? "border-t-4 border-ink text-ink" : "text-neutral-600"}`}
+            className={`px-5 py-3 text-sm font-bold ${tab === "body" ? "border-t-4 border-primary text-ink" : "text-neutral-600"}`}
           >
             Body
           </button>
           <button
             type="button"
             onClick={() => setTab("options")}
-            className={`px-5 py-3 text-sm font-bold ${tab === "options" ? "border-t-4 border-ink text-ink" : "text-neutral-600"}`}
+            className={`px-5 py-3 text-sm font-bold ${tab === "options" ? "border-t-4 border-primary text-ink" : "text-neutral-600"}`}
           >
             Options
           </button>

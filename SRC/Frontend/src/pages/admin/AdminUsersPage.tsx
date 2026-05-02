@@ -29,7 +29,7 @@ const ROLE_OPTIONS = ["customer", "organiser", "admin"] as const
 const ROLE_STYLE: Record<string, string> = {
   customer: "bg-blue-50 text-blue-800",
   organiser: "bg-emerald-50 text-emerald-800",
-  admin: "bg-ink text-paper",
+  admin: "bg-primary text-paper",
 }
 
 function initials(name: string) {
@@ -336,7 +336,7 @@ export function AdminUsersPage() {
             <p className="mt-4 text-sm text-neutral-600">Assign roles. At least one is required. Changes apply immediately.</p>
             <div className="mt-4 grid gap-2">
               {ROLE_OPTIONS.map((r) => (
-                <label key={r} className={["flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition", draftRoles.has(r) ? "border-ink bg-ink text-paper" : "border-line bg-white text-ink hover:border-neutral-400"].join(" ")}>
+                <label key={r} className={["flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition", draftRoles.has(r) ? "border-primary bg-primary text-paper" : "border-line bg-white text-ink hover:border-neutral-400"].join(" ")}>
                   <input type="checkbox" className="sr-only" checked={draftRoles.has(r)} onChange={() => {
                     setDraftRoles((prev) => { const next = new Set(prev); next.has(r) ? next.delete(r) : next.add(r); return next })
                   }} />

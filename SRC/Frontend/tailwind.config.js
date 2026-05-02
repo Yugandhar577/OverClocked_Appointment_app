@@ -10,7 +10,8 @@ export default {
         moss: "#44624a",
         clay: "#a5533d",
         signal: "#275efe",
-        warn: "#b42318"
+        warn: "#b42318",
+        primary: "var(--odoo-primary)"
       },
       boxShadow: {
         panel: "0 1px 0 rgba(22,22,22,0.08), 0 18px 40px rgba(22,22,22,0.08)"

@@ -8,7 +8,7 @@ function Metric({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="odoo-surface p-4">
       <div className="text-xs font-semibold uppercase text-neutral-500">{label}</div>
-      <div className="mt-2 text-3xl font-bold text-[var(--odoo-primary)]">{value}</div>
+      <div className="mt-2 text-3xl font-bold text-primary">{value}</div>
     </div>
   )
 }
