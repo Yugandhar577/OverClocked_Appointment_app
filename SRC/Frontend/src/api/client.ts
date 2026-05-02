@@ -32,6 +32,8 @@ const API_MESSAGES: Record<string, string> = {
   account_disabled: "This account has been disabled.",
   otp_expired: "That verification or reset link has expired. Request a new one.",
   email_exists: "An account with this email already exists.",
+  google_auth_failed: "Google sign-in failed. Please try again or use email and password.",
+  google_not_configured: "Google sign-in is not enabled on this server.",
 }
 
 export function errorMessage(error: unknown): string {
