@@ -37,7 +37,7 @@ class Appointment(Base):
 
     __table_args__ = (
         CheckConstraint(
-            "status IN ('pending', 'confirmed', 'cancelled', 'completed', 'rescheduled')",
+            "status IN ('pending', 'confirmed', 'cancelled', 'completed', 'rescheduled', 'no_show')",
             name="ck_appointments_status",
         ),
         CheckConstraint("people_count > 0", name="ck_appointments_people_count_positive"),
