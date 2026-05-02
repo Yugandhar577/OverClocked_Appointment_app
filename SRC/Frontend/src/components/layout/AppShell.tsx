@@ -7,6 +7,9 @@ import { Button } from "../ui/Button"
 
 export function AppShell() {
   const { user, logout, hasRole } = useAuth()
+  const isAdmin = hasRole("admin")
+  const isOrganiser = hasRole("organiser") && !isAdmin
+  const isCustomer = Boolean(user) && !isAdmin && !isOrganiser
   return (
     <div className="min-h-screen">
       <header className="border-b border-line bg-paper/90 backdrop-blur">
@@ -16,11 +19,11 @@ export function AppShell() {
             <span>OverClocked</span>
           </Link>
           <nav className="hidden items-center gap-1 md:flex">
-            <NavItem to="/">Book</NavItem>
-            {user && <NavItem to="/me/appointments">My appointments</NavItem>}
-            {hasRole("organiser", "admin") && <NavItem to="/organiser/types">Types</NavItem>}
-            {hasRole("organiser", "admin") && <NavItem to="/organiser/bookings">Bookings</NavItem>}
-            {hasRole("admin") && <AdminDropdown />}
+            {(!user || isCustomer) && <NavItem to="/">Book</NavItem>}
+            {isCustomer && <NavItem to="/me/appointments">My appointments</NavItem>}
+            {isOrganiser && <NavItem to="/organiser/types">Types</NavItem>}
+            {isOrganiser && <NavItem to="/organiser/bookings">Bookings</NavItem>}
+            {isAdmin && <AdminDropdown />}
           </nav>
           <div className="flex items-center gap-2">
             {user ? (
@@ -44,18 +47,24 @@ export function AppShell() {
         <Outlet />
       </main>
       <nav className="fixed bottom-0 left-0 right-0 grid grid-cols-4 border-t border-line bg-paper md:hidden">
-        <MobileNav to="/" icon={<CalendarDays size={18} />} label="Book" />
-        {user ? (
+        {(!user || isCustomer) ? (
+          <MobileNav to="/" icon={<CalendarDays size={18} />} label="Book" />
+        ) : isOrganiser ? (
+          <MobileNav to="/organiser/types" icon={<UserCog size={18} />} label="Types" />
+        ) : (
+          <MobileNav to="/admin" icon={<Shield size={18} />} label="Admin" />
+        )}
+        {isCustomer ? (
           <MobileNav to="/me/appointments" icon={<User size={18} />} label="Mine" />
         ) : (
           <MobileNav to="/login" icon={<User size={18} />} label="Login" />
         )}
-        {hasRole("organiser", "admin") ? (
+        {isOrganiser ? (
           <MobileNav to="/organiser/bookings" icon={<LayoutDashboard size={18} />} label="Org" />
         ) : (
           <MobileNav to="/organiser/types" icon={<UserCog size={18} />} label="Org" />
         )}
-        {hasRole("admin") ? (
+        {isAdmin ? (
           <MobileNav to="/admin" icon={<Shield size={18} />} label="Admin" />
         ) : (
           <MobileNav to="/me/profile" icon={<Shield size={18} />} label="Profile" />

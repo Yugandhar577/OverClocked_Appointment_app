@@ -28,7 +28,7 @@ DEFAULT_THEME = {
     "primaryColor": "#714B67",
     "secondaryColor": "#017E84",
     "accentColor": "#00A09D",
-    "backgroundColor": "#F8F9FA",
+    "backgroundColor": "#FBF7EF",
     "cardColor": "#FFFFFF",
     "borderColor": "#D8DADD",
     "successColor": "#28A745",

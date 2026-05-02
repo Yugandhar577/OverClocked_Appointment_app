@@ -30,6 +30,15 @@ async def features():
     return FeatureFlagsOut(flags=advanced_service.feature_flags())
 
 
+@router.get("/integrations/google-calendar/connect")
+async def google_calendar_connect():
+    return {
+        "provider": "google_calendar",
+        "status": "not_configured",
+        "auth_url": "https://calendar.google.com/calendar/u/0/r",
+    }
+
+
 @router.post("/waitlist", response_model=WaitlistOut, status_code=status.HTTP_201_CREATED)
 async def join_waitlist(
     payload: WaitlistCreate,

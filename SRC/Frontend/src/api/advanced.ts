@@ -99,3 +99,8 @@ export async function createManualBooking(payload: {
   const { data } = await api.post("/admin/manual-bookings", payload)
   return data
 }
+
+export async function googleCalendarConnect() {
+  const { data } = await api.get<{ provider: string; status: string; auth_url: string }>("/integrations/google-calendar/connect")
+  return data
+}

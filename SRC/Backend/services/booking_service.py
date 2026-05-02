@@ -26,6 +26,7 @@ from SRC.Backend.db.models import (
     GeneratedSlot,
     SlotCapacityLog,
     User,
+    WaitlistEntry,
 )
 from SRC.Backend.services import appointment_service
 from SRC.Backend.services.notification_service import queue_email
@@ -71,24 +72,36 @@ async def availability(
             GeneratedSlot.start_datetime >= start_utc,
             GeneratedSlot.start_datetime < end_utc,
             GeneratedSlot.is_blocked.is_(False),
-            GeneratedSlot.booked_count < GeneratedSlot.max_capacity,
         )
         .order_by(GeneratedSlot.start_datetime.asc(), GeneratedSlot.id.asc())
     )
     if resource_id:
         stmt = stmt.where(GeneratedSlot.resource_id == resource_id)
     rows = (await session.execute(stmt)).scalars().all()
-    return [
-        {
+    waitlist_rows = await session.execute(
+        select(WaitlistEntry.slot_id)
+        .where(WaitlistEntry.slot_id.in_([row.id for row in rows]))
+        .where(WaitlistEntry.status.in_(["waiting", "offered"]))
+    )
+    waitlist_slot_ids = set(waitlist_rows.scalars().all())
+    result = []
+    for row in rows:
+        remaining = row.max_capacity - row.booked_count
+        is_reserved = row.id in waitlist_slot_ids
+        status = "waitlist" if is_reserved else "full" if remaining <= 0 else "available"
+        result.append(
+            {
             "slot_id": row.id,
             "start_datetime": row.start_datetime,
             "end_datetime": row.end_datetime,
-            "remaining_capacity": row.max_capacity - row.booked_count,
+            "remaining_capacity": remaining,
             "max_capacity": row.max_capacity,
             "resource_id": row.resource_id,
+            "status": status,
+            "is_waitlist_reserved": is_reserved,
         }
-        for row in rows
-    ]
+        )
+    return result
 
 
 async def create(session: AsyncSession, payload, actor: User) -> tuple[Appointment, GeneratedSlot, AppointmentType, str]:

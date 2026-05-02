@@ -1,9 +1,9 @@
 import { CalendarDays, Clock, MapPin } from "lucide-react"
-import { useEffect, useMemo, useState, type FormEvent } from "react"
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react"
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom"
 
 import { getAppointmentType, getAppointmentTypeByShare } from "../../api/appointmentTypes"
-import { joinWaitlist } from "../../api/advanced"
+import { googleCalendarConnect, joinWaitlist } from "../../api/advanced"
 import { availability, createBooking } from "../../api/bookings"
 import { errorMessage } from "../../api/client"
 import type { AppointmentTypeDetail, AvailabilitySlot } from "../../api/types"
@@ -38,6 +38,7 @@ export function BookingPage({ share = false }: { share?: boolean }) {
   const [saving, setSaving] = useState(false)
   const [waitlistEnabled, setWaitlistEnabled] = useState(false)
   const [waitlistMessage, setWaitlistMessage] = useState("")
+  const dateInputRef = useRef<HTMLInputElement>(null)
 
   const appointmentTypeId = share ? undefined : params.appointmentTypeId
   const shareToken = share ? params.shareToken : undefined
@@ -160,6 +161,18 @@ export function BookingPage({ share = false }: { share?: boolean }) {
     }
   }
 
+  async function openGoogleCalendar() {
+    const response = await googleCalendarConnect()
+    window.open(response.auth_url, "_blank", "noopener,noreferrer")
+  }
+
+  function slotClass(slot: AvailabilitySlot, selected: boolean) {
+    if (selected) return "border-ink bg-ink text-paper shadow-sm"
+    if (slot.status === "full" || slot.remaining_capacity <= 0) return "border-red-200 bg-red-50 text-red-800"
+    if (slot.status === "waitlist" || slot.is_waitlist_reserved) return "border-amber-200 bg-amber-50 text-amber-900"
+    return "border-green-200 bg-green-50 text-green-900 hover:border-green-500"
+  }
+
   if (!detail && !error) return <Notice>Loading appointment type...</Notice>
 
   return (
@@ -184,12 +197,6 @@ export function BookingPage({ share = false }: { share?: boolean }) {
                 )}
               </div>
             </div>
-            <div className="grid gap-2 rounded-md border border-line bg-white p-3 md:grid-cols-4">
-              <Step active done label="Service" />
-              <Step active={Boolean(resourceId && date)} done={Boolean(resourceId && date)} label="Time" />
-              <Step active={Boolean(slotId)} done={Boolean(slotId)} label="Details" />
-              <Step active={Boolean(auth.user && slotId && !missingRequired)} done={false} label="Confirm" />
-            </div>
             {!auth.user && (
               <Notice>
                 <Link className="font-semibold text-signal" to="/login" state={{ from: location.pathname }}>
@@ -212,9 +219,35 @@ export function BookingPage({ share = false }: { share?: boolean }) {
               ) : (
                 <Notice tone="error">No active resource is attached to this appointment type.</Notice>
               )}
-              <Field label="Date">
-                <Input type="date" value={date} min={todayIsoDate()} onChange={(event) => setDate(event.target.value)} />
-              </Field>
+              <div className="grid gap-2">
+                <label className="text-sm font-semibold text-ink">Date</label>
+                <div className="flex gap-2">
+                  <Input
+                    ref={dateInputRef}
+                    className="flex-1"
+                    type="date"
+                    value={date}
+                    min={todayIsoDate()}
+                    onChange={(event) => setDate(event.target.value)}
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    title="Open calendar"
+                    onClick={() => {
+                      const input = dateInputRef.current
+                      if (!input) return
+                      if (typeof input.showPicker === "function") input.showPicker()
+                      else input.focus()
+                    }}
+                  >
+                    <CalendarDays size={17} />
+                  </Button>
+                  <Button type="button" variant="secondary" onClick={openGoogleCalendar}>
+                    Google Calendar
+                  </Button>
+                </div>
+              </div>
               <div className="grid gap-2">
                 <label className="text-sm font-semibold text-ink">Slots</label>
                 {slotHint && <p className="text-sm text-neutral-700">{slotHint}</p>}
@@ -223,16 +256,22 @@ export function BookingPage({ share = false }: { share?: boolean }) {
                     <button
                       key={slot.slot_id}
                       type="button"
+                      disabled={slot.remaining_capacity <= 0}
                       onClick={() => {
+                        if (slot.remaining_capacity <= 0) return
                         setSlotId(slot.slot_id)
                         setPeople(1)
                       }}
-                      className={`focus-ring rounded-md border px-3 py-2 text-sm font-semibold ${
-                        slotId === slot.slot_id ? "border-ink bg-ink text-paper" : "border-line bg-white text-ink"
-                      }`}
+                      className={`focus-ring rounded-md border px-3 py-2 text-sm font-semibold transition disabled:cursor-not-allowed ${slotClass(slot, slotId === slot.slot_id)}`}
                     >
                       {formatTime(slot.start_datetime)}
-                      <span className="block text-xs opacity-80">{slot.remaining_capacity} left</span>
+                      <span className="block text-xs opacity-80">
+                        {slot.status === "full" || slot.remaining_capacity <= 0
+                          ? "Fully booked"
+                          : slot.status === "waitlist" || slot.is_waitlist_reserved
+                            ? "Waitlist reserved"
+                            : `${slot.remaining_capacity} left`}
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -317,13 +356,4 @@ async function findNextAvailableDate(appointmentTypeId: string, resourceId: stri
     }
   }
   return null
-}
-
-function Step({ active, done, label }: { active: boolean; done: boolean; label: string }) {
-  return (
-    <div className={`rounded-md border px-3 py-2 text-sm font-semibold ${active ? "border-ink bg-paper text-ink" : "border-line text-neutral-500"}`}>
-      <span className={`mr-2 inline-block h-2 w-2 rounded-full ${done ? "bg-moss" : active ? "bg-clay" : "bg-line"}`} />
-      {label}
-    </div>
-  )
 }

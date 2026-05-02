@@ -89,6 +89,8 @@ export interface AvailabilitySlot {
   remaining_capacity: number
   max_capacity: number
   resource_id?: string | null
+  status?: "available" | "full" | "waitlist"
+  is_waitlist_reserved?: boolean
 }
 
 export interface Booking {
