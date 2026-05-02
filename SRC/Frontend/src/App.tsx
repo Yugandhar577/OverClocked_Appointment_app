@@ -1,10 +1,18 @@
 import { Navigate, Route, Routes } from "react-router-dom"
 
+import { AdminLayout } from "./components/admin/AdminLayout"
 import { AppShell } from "./components/layout/AppShell"
 import { AuthShell } from "./components/layout/AuthShell"
 import { RequireAuth } from "./components/layout/RequireAuth"
-import { AdminStatsPage } from "./pages/admin/AdminStatsPage"
+import { AdminDashboardPage } from "./pages/admin/AdminDashboardPage"
+import { AnalyticsDashboardPage } from "./pages/admin/AnalyticsDashboardPage"
+import { AdminOrganizationDetailPage } from "./pages/admin/AdminOrganizationDetailPage"
+import { AdminOrganizationsPage } from "./pages/admin/AdminOrganizationsPage"
 import { AdminUsersPage } from "./pages/admin/AdminUsersPage"
+import { ManualBookingPage } from "./pages/admin/ManualBookingPage"
+import { PackagesPage } from "./pages/admin/PackagesPage"
+import { ThemeSettingsPage } from "./pages/admin/ThemeSettingsPage"
+import { WaitlistDashboardPage } from "./pages/admin/WaitlistDashboardPage"
 import { BookingPage } from "./pages/booking/BookingPage"
 import { ConfirmationPage } from "./pages/booking/ConfirmationPage"
 import { MyAppointmentsPage } from "./pages/customer/MyAppointmentsPage"
@@ -39,11 +47,24 @@ export function App() {
         <Route element={<RequireAuth roles={["organiser", "admin"]} />}>
           <Route path="/organiser/types" element={<AppointmentTypesPage />} />
           <Route path="/organiser/types/new" element={<NewTypePage />} />
+          <Route path="/organiser/types/:appointmentTypeId" element={<NewTypePage />} />
           <Route path="/organiser/bookings" element={<OrganiserBookingsPage />} />
         </Route>
-        <Route element={<RequireAuth roles={["admin"]} />}>
-          <Route path="/admin/users" element={<AdminUsersPage />} />
-          <Route path="/admin/stats" element={<AdminStatsPage />} />
+        <Route element={<RequireAuth roles={["organiser", "admin"]} />}>
+          <Route element={<AdminLayout />}>
+            <Route path="/admin" element={<AdminDashboardPage />} />
+            <Route path="/admin/analytics" element={<AnalyticsDashboardPage />} />
+            <Route path="/admin/waitlist" element={<WaitlistDashboardPage />} />
+            <Route path="/admin/manual-booking" element={<ManualBookingPage />} />
+            <Route path="/admin/packages" element={<PackagesPage />} />
+            <Route path="/admin/theme" element={<ThemeSettingsPage />} />
+            <Route element={<RequireAuth roles={["admin"]} />}>
+              <Route path="/admin/users" element={<AdminUsersPage />} />
+              <Route path="/admin/organizations" element={<AdminOrganizationsPage />} />
+              <Route path="/admin/organizations/:orgId" element={<AdminOrganizationDetailPage />} />
+            </Route>
+          </Route>
+          <Route path="/admin/stats" element={<Navigate to="/admin" replace />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

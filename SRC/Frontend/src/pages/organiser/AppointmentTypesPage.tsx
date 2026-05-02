@@ -1,6 +1,6 @@
-import { Copy, Plus } from "lucide-react"
-import { useEffect, useState } from "react"
-import { Link } from "react-router-dom"
+import { CalendarDays, Copy, Headphones, Link2, Monitor, Package, Plus, Search, Settings, Share2, Users, X } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import { Link, useNavigate } from "react-router-dom"
 
 import { listAppointmentTypes, shareLink } from "../../api/appointmentTypes"
 import { errorMessage } from "../../api/client"
@@ -8,10 +8,40 @@ import type { AppointmentTypeListItem } from "../../api/types"
 import { Button } from "../../components/ui/Button"
 import { Notice } from "../../components/ui/Notice"
 
+const presets = [
+  {
+    id: "meeting",
+    title: "Meeting",
+    description: "Let others book a meeting in your calendar",
+    icon: Users,
+  },
+  {
+    id: "video_call",
+    title: "Video Call",
+    description: "Schedule a video meeting in a virtual room with participants",
+    icon: Headphones,
+  },
+  {
+    id: "table_booking",
+    title: "Table Booking",
+    description: "Let customers book a table in your restaurant or bar",
+    icon: Monitor,
+  },
+  {
+    id: "resource",
+    title: "Book a Resource",
+    description: "Let customers book a resource such as a room, court, or desk",
+    icon: Package,
+  },
+]
+
 export function AppointmentTypesPage() {
+  const navigate = useNavigate()
   const [items, setItems] = useState<Array<AppointmentTypeListItem & { published: boolean }>>([])
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState("")
+  const [query, setQuery] = useState("")
+  const [showPresets, setShowPresets] = useState(false)
 
   useEffect(() => {
     Promise.all([listAppointmentTypes(true), listAppointmentTypes(false)])
@@ -25,6 +55,11 @@ export function AppointmentTypesPage() {
       .finally(() => setLoading(false))
   }, [])
 
+  const visibleItems = useMemo(
+    () => items.filter((item) => item.title.toLowerCase().includes(query.trim().toLowerCase())),
+    [items, query],
+  )
+
   async function copyLink(id: string) {
     try {
       const res = await shareLink(id)
@@ -35,59 +70,139 @@ export function AppointmentTypesPage() {
     }
   }
 
+  function startPreset(preset: string) {
+    setShowPresets(false)
+    navigate(`/organiser/types/new?preset=${preset}`)
+  }
+
   return (
-    <div className="grid gap-5">
-      <div className="flex items-center justify-between border-b border-line pb-4">
-        <h1 className="text-3xl font-bold text-ink">Appointment types</h1>
-        <Link to="/organiser/types/new">
-          <Button>
-            <Plus size={17} />
-            New
-          </Button>
-        </Link>
-      </div>
-      {message && <Notice>{message}</Notice>}
-      <div className="grid gap-3 md:grid-cols-3">
-        <Metric label="Total" value={items.length} />
-        <Metric label="Published" value={items.filter((item) => item.published).length} />
-        <Metric label="Drafts" value={items.filter((item) => !item.published).length} />
-      </div>
-      {loading && <Notice>Loading appointment types...</Notice>}
-      <div className="grid gap-3">
-        {items.map((item) => (
-          <div key={item.id} className="flex flex-col justify-between gap-3 rounded-md border border-line bg-paper p-4 md:flex-row md:items-center">
+    <div className="grid gap-4">
+      <section className="rounded-md border border-line bg-paper">
+        <div className="flex flex-col gap-4 border-b border-line p-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-wrap items-center gap-3">
+            <Button type="button" onClick={() => setShowPresets(true)}>
+              <Plus size={16} />
+              New
+            </Button>
+            <Button type="button" variant="secondary" onClick={() => visibleItems[0] && copyLink(visibleItems[0].id)} disabled={!visibleItems.length}>
+              <Share2 size={16} />
+              Share
+            </Button>
             <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h2 className="font-bold text-ink">{item.title}</h2>
-                <span className={`rounded-full border px-2 py-1 text-xs font-semibold ${item.published ? "border-green-200 bg-green-50 text-moss" : "border-amber-200 bg-amber-50 text-amber-800"}`}>
-                  {item.published ? "Published" : "Draft"}
-                </span>
-              </div>
-              <p className="text-sm text-neutral-700">
-                {item.duration_minutes} min - {item.is_paid ? `INR ${item.price}` : "Free"}
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Link to={`/book/${item.id}`}>
-                <Button variant="secondary">Open</Button>
-              </Link>
-              <Button variant="secondary" onClick={() => copyLink(item.id)}>
-                <Copy size={16} />
-              </Button>
+              <p className="text-sm font-bold text-signal">Appointments</p>
+              <h1 className="flex items-center gap-2 text-2xl font-bold text-ink">
+                Appointment types
+                <Settings size={18} />
+              </h1>
             </div>
           </div>
-        ))}
+          <label className="focus-within:ring-signal flex h-10 w-full items-center rounded-md border border-line bg-white px-3 focus-within:ring-2 lg:max-w-md">
+            <Search size={18} className="text-neutral-500" />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search..."
+              className="h-full min-w-0 flex-1 border-0 bg-transparent px-3 text-sm outline-none"
+            />
+          </label>
+        </div>
+
+        {message && <div className="p-4"><Notice>{message}</Notice></div>}
+        {loading && <div className="p-4"><Notice>Loading appointment types...</Notice></div>}
+
+        <div className="divide-y divide-line">
+          {visibleItems.map((item) => (
+            <div key={item.id} className="grid gap-3 p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Link to={`/organiser/types/${item.id}`} className="text-lg font-bold text-ink hover:text-signal">
+                    {item.title}
+                  </Link>
+                  <span className={`rounded-full border px-2 py-1 text-xs font-semibold ${item.published ? "border-green-200 bg-green-50 text-moss" : "border-amber-200 bg-amber-50 text-amber-800"}`}>
+                    {item.published ? "Published" : "Draft"}
+                  </span>
+                </div>
+                <p className="mt-1 flex flex-wrap items-center gap-3 text-sm text-neutral-700">
+                  <span className="inline-flex items-center gap-1">
+                    <CalendarDays size={15} />
+                    {item.duration_minutes} min
+                  </span>
+                  <span>{item.is_paid ? `INR ${item.price}` : "Free"}</span>
+                  <span className="capitalize">{(item.preset_type || "meeting").replace("_", " ")}</span>
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" onClick={() => copyLink(item.id)}>
+                  <Share2 size={16} />
+                  Share
+                </Button>
+                <Link to={`/organiser/types/${item.id}`}>
+                  <Button type="button" variant="secondary">
+                    <Settings size={16} />
+                    Configure
+                  </Button>
+                </Link>
+                <Button type="button" variant="ghost" title="Copy link" onClick={() => copyLink(item.id)}>
+                  <Copy size={16} />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {!loading && visibleItems.length === 0 && <div className="p-4"><Notice>No appointment types yet.</Notice></div>}
+      </section>
+
+      <div className="grid gap-3 md:grid-cols-3">
+        <Metric label="Shared links" value={items.filter((item) => item.published).length} icon={<Link2 size={18} />} />
+        <Metric label="Resources" value={items.length} icon={<Package size={18} />} />
+        <Metric label="Appointments" value={items.filter((item) => item.published).length} icon={<CalendarDays size={18} />} />
       </div>
-      {!loading && items.length === 0 && <Notice>No appointment types yet.</Notice>}
+
+      {showPresets && (
+        <div className="fixed inset-0 z-40 grid place-items-center bg-black/35 p-4">
+          <section className="w-full max-w-5xl overflow-hidden rounded-md border border-line bg-paper shadow-panel">
+            <div className="flex items-center justify-between border-b border-line px-5 py-4">
+              <h2 className="text-xl font-bold text-ink">Choose an appointment preset</h2>
+              <button type="button" onClick={() => setShowPresets(false)} className="focus-ring rounded-md p-2 text-neutral-600 hover:bg-white" aria-label="Close">
+                <X size={22} />
+              </button>
+            </div>
+            <div className="grid gap-4 p-5 md:grid-cols-3">
+              {presets.map((preset) => {
+                const Icon = preset.icon
+                return (
+                  <button
+                    type="button"
+                    key={preset.id}
+                    onClick={() => startPreset(preset.id)}
+                    className="focus-ring grid min-h-52 place-items-center rounded-md border border-line bg-white p-5 text-center transition hover:border-signal hover:shadow-panel"
+                  >
+                    <Icon size={58} className="text-signal" />
+                    <span className="mt-4 text-xl font-bold text-ink">{preset.title}</span>
+                    <span className="mt-2 max-w-64 text-sm leading-6 text-neutral-700">{preset.description}</span>
+                  </button>
+                )
+              })}
+            </div>
+            <div className="border-t border-line p-4">
+              <Button type="button" onClick={() => setShowPresets(false)}>Close</Button>
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   )
 }
 
-function Metric({ label, value }: { label: string; value: number }) {
+function Metric({ label, value, icon }: { label: string; value: number; icon: React.ReactNode }) {
   return (
-    <div className="rounded-md border border-line bg-white p-3">
-      <div className="text-xs font-semibold uppercase text-neutral-600">{label}</div>
-      <div className="mt-1 text-2xl font-bold text-ink">{value}</div>
+    <div className="flex items-center gap-3 rounded-md border border-line bg-white p-3">
+      <span className="grid h-10 w-10 place-items-center rounded-md bg-paper text-signal">{icon}</span>
+      <div>
+        <div className="text-xs font-semibold uppercase text-neutral-600">{label}</div>
+        <div className="text-xl font-bold text-ink">{value}</div>
+      </div>
     </div>
   )
 }

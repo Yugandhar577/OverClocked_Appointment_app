@@ -1,10 +1,11 @@
+@import "./theme.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
   color: #161616;
-  background: #f8f7f2;
+  background: var(--odoo-bg, #f8f7f2);
   font-family:
     ui-sans-serif,
     "Segoe UI",
@@ -22,11 +23,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background:
-    linear-gradient(90deg, rgba(22, 22, 22, 0.035) 1px, transparent 1px),
-    linear-gradient(0deg, rgba(22, 22, 22, 0.035) 1px, transparent 1px),
-    #f8f7f2;
-  background-size: 28px 28px;
+  background: var(--odoo-bg, #fbf7ef);
 }
 
 button,

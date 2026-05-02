@@ -8,10 +8,11 @@ from SRC.Backend.db.models import Appointment, AuditLog, User
 
 ALLOWED_TRANSITIONS = {
     "pending": {"confirmed", "cancelled"},
-    "confirmed": {"completed", "cancelled", "rescheduled"},
+    "confirmed": {"completed", "cancelled", "rescheduled", "no_show"},
     "cancelled": set(),
     "completed": set(),
     "rescheduled": set(),
+    "no_show": set(),
 }
 
 

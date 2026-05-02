@@ -1,0 +1,27 @@
+:root {
+  --odoo-primary: #714b67;
+  --odoo-secondary: #017e84;
+  --odoo-accent: #00a09d;
+  --odoo-bg: #f8f9fa;
+  --odoo-card: #ffffff;
+  --odoo-border: #d8dadd;
+  --odoo-success: #28a745;
+  --odoo-warning: #f0ad4e;
+  --odoo-error: #dc3545;
+  --odoo-sidebar: #f3f4f6;
+  --odoo-header: #ffffff;
+  --odoo-radius: 8px;
+}
+
+[data-theme-mode="dark"] {
+  --odoo-bg: #15171a;
+  --odoo-card: #202327;
+  --odoo-border: #3a3f45;
+  color-scheme: dark;
+}
+
+.odoo-surface {
+  background: var(--odoo-card);
+  border: 1px solid var(--odoo-border);
+  border-radius: var(--odoo-radius);
+}

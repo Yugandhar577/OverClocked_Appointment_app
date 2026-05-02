@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --color-surface: oklch(0.99 0.004 264);
+  --color-surface-2: oklch(0.965 0.01 264);
+  --color-ink: oklch(0.22 0.04 264);
+  --color-ink-muted: oklch(0.45 0.03 264);
+  --color-accent: oklch(0.55 0.22 264);
+  --color-accent-hover: oklch(0.48 0.22 264);
+  --color-success: oklch(0.55 0.16 155);
+  --color-danger: oklch(0.55 0.2 25);
+  --radius-card: 1rem;
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: radial-gradient(1200px 600px at 10% -10%, oklch(0.92 0.06 264 / 0.45), transparent),
+    radial-gradient(900px 500px at 90% 0%, oklch(0.88 0.08 300 / 0.35), transparent),
+    var(--color-surface);
+  color: var(--color-ink);
+  min-height: 100vh;
+}

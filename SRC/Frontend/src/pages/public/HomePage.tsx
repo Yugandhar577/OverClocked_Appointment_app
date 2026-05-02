@@ -1,11 +1,15 @@
-import { Calendar, CalendarCheck, IndianRupee, Plus, Users } from "lucide-react"
-import { useEffect, useState } from "react"
-import { Link } from "react-router-dom"
+import { Calendar, CalendarCheck, IndianRupee, Plus, Sparkles, Users } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import { Link, useSearchParams } from "react-router-dom"
 
 import { listAppointmentTypes } from "../../api/appointmentTypes"
 import { errorMessage } from "../../api/client"
 import type { AppointmentTypeListItem } from "../../api/types"
 import { useAuth } from "../../auth/useAuth"
+import {
+  LandingLoginModal,
+  LANDING_LOGIN_MODAL_STORAGE_KEY,
+} from "../../components/public/LandingLoginModal"
 import { Button } from "../../components/ui/Button"
 import { Notice } from "../../components/ui/Notice"
 
@@ -13,7 +17,21 @@ export function HomePage() {
   const [items, setItems] = useState<AppointmentTypeListItem[]>([])
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(true)
+  const [landingPromptOpen, setLandingPromptOpen] = useState(false)
+  const [searchParams] = useSearchParams()
   const { user, hasRole } = useAuth()
+
+  const query = (searchParams.get("q") ?? "").trim().toLowerCase()
+
+  const visibleItems = useMemo(() => {
+    if (!query) return items
+    return items.filter((item) => {
+      const title = item.title.toLowerCase()
+      const org = item.organiser_name?.toLowerCase() ?? ""
+      const preset = (item.preset_type ?? "").toLowerCase()
+      return title.includes(query) || org.includes(query) || preset.includes(query)
+    })
+  }, [items, query])
 
   useEffect(() => {
     listAppointmentTypes(true)
@@ -22,8 +40,15 @@ export function HomePage() {
       .finally(() => setLoading(false))
   }, [])
 
+  useEffect(() => {
+    if (user) return
+    if (sessionStorage.getItem(LANDING_LOGIN_MODAL_STORAGE_KEY)) return
+    setLandingPromptOpen(true)
+  }, [user])
+
   return (
     <div className="grid gap-6">
+      <LandingLoginModal open={landingPromptOpen} onDismiss={() => setLandingPromptOpen(false)} />
       <div className="flex flex-col justify-between gap-4 border-b border-line pb-5 md:flex-row md:items-end">
         <div>
           <h1 className="text-3xl font-bold text-ink">Book an appointment</h1>
@@ -78,6 +103,25 @@ export function HomePage() {
         </div>
       )}
       {error && <Notice tone="error">{error}</Notice>}
+
+      <section className="relative overflow-hidden rounded-xl border border-line bg-gradient-to-br from-white via-paper to-slate-100/80 px-5 py-5 shadow-panel md:px-6 md:py-6">
+        <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-signal/10 blur-3xl" />
+        <div className="relative flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-ink text-paper">
+              <Sparkles size={18} />
+            </span>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-moss">Book with confidence</p>
+              <h2 className="mt-1 text-lg font-bold text-ink md:text-xl">Find the right appointment in moments</h2>
+              <p className="mt-1 max-w-2xl text-sm text-neutral-700">
+                Browse published services below. Signing in is optional until you finalize a reservation — skip the welcome prompt anytime to explore.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {loading && (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {[0, 1, 2].map((item) => (
@@ -85,8 +129,9 @@ export function HomePage() {
           ))}
         </div>
       )}
+
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {items.map((item) => (
+        {visibleItems.map((item) => (
           <article key={item.id} className="rounded-md border border-line bg-paper p-4 shadow-panel">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -112,6 +157,9 @@ export function HomePage() {
         ))}
       </div>
       {!loading && !error && items.length === 0 && <Notice>No published appointment types yet.</Notice>}
+      {!loading && !error && items.length > 0 && query && visibleItems.length === 0 && (
+        <Notice>No services match &ldquo;{searchParams.get("q")?.trim()}&rdquo;. Try another search.</Notice>
+      )}
     </div>
   )
 }

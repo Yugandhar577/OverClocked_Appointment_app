@@ -16,6 +16,18 @@ class AppointmentTypeCreate(BaseModel):
     venue: str | None = None
 
 
+class AppointmentTypeUpdate(BaseModel):
+    title: str = Field(min_length=2, max_length=200)
+    preset_type: str | None = "meeting"
+    description: str | None = None
+    duration_minutes: int = Field(gt=0, default=30)
+    resource_type: str = "user"
+    timezone: str = "Asia/Kolkata"
+    future_days_limit: int = Field(default=30, ge=1, le=120)
+    venue: str | None = None
+    confirmation_msg: str | None = None
+
+
 class AppointmentTypeUpdateRules(BaseModel):
     requires_confirmation: bool = False
     manage_capacity: bool = True
@@ -50,6 +62,16 @@ class ResourceOut(BaseModel):
 
 class WorkingHourIn(BaseModel):
     day_of_week: int = Field(ge=0, le=6)
+    start_time: time
+    end_time: time
+    resource_id: UUID | None = None
+
+
+class WorkingHourOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    day_of_week: int
     start_time: time
     end_time: time
     resource_id: UUID | None = None
@@ -115,6 +137,7 @@ class AppointmentTypeOut(BaseModel):
 class AppointmentTypeDetail(AppointmentTypeOut):
     resources: list[ResourceOut] = []
     questions: list[QuestionOut] = []
+    working_hours: list[WorkingHourOut] = []
 
 
 class ShareLinkOut(BaseModel):

@@ -11,6 +11,8 @@ class AvailabilitySlot(BaseModel):
     remaining_capacity: int
     max_capacity: int
     resource_id: UUID | None
+    status: str = "available"
+    is_waitlist_reserved: bool = False
 
 
 class IntakeAnswerIn(BaseModel):
