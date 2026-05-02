@@ -9,6 +9,7 @@ from SRC.Backend.core.errors import NotFoundError, NotOwnerError
 from SRC.Backend.db.models import (
     AppointmentQuestion,
     AppointmentType,
+    AppointmentTypeReminder,
     AppointmentTypeResource,
     AuditLog,
     BookingRule,
@@ -20,7 +21,7 @@ from SRC.Backend.db.models import (
     WorkingHour,
     user_roles,
 )
-from SRC.Backend.services import slot_generation_service
+from SRC.Backend.services import mail_template_service, slot_generation_service
 
 
 async def _assert_owner(session: AsyncSession, appointment_type_id: UUID, actor: User) -> AppointmentType:
@@ -56,6 +57,17 @@ async def create(session: AsyncSession, payload, actor: User) -> AppointmentType
         )
         session.add(appointment_type)
         await session.flush()
+        for attr, template_type in [
+            ("booking_email_template_id", "booking_confirmation"),
+            ("cancellation_email_template_id", "cancellation"),
+            ("reminder_email_template_id", "reminder_email"),
+            ("reminder_sms_template_id", "reminder_sms"),
+        ]:
+            default_template = await mail_template_service.get_default(session, template_type)
+            if default_template:
+                setattr(appointment_type, attr, default_template.id)
+        session.add(AppointmentTypeReminder(appointment_type_id=appointment_type.id, channel="email", hours_before=24))
+        session.add(AppointmentTypeReminder(appointment_type_id=appointment_type.id, channel="sms", hours_before=2))
         session.add(BookingRule(appointment_type_id=appointment_type.id, max_bookings_per_slot=1))
         _audit(session, actor, "appointment_type_created", appointment_type.id, {"title": appointment_type.title})
     return appointment_type
@@ -113,11 +125,19 @@ async def get_detail(session: AsyncSession, appointment_type_id: UUID) -> dict:
             .order_by(WorkingHour.day_of_week.asc(), WorkingHour.start_time.asc())
         )
     ).scalars().all()
+    reminders = (
+        await session.execute(
+            select(AppointmentTypeReminder)
+            .where(AppointmentTypeReminder.appointment_type_id == appointment_type_id)
+            .order_by(AppointmentTypeReminder.channel.asc(), AppointmentTypeReminder.hours_before.asc())
+        )
+    ).scalars().all()
     return {
         "appointment_type": appointment_type,
         "resources": list(resources),
         "questions": list(questions),
         "working_hours": list(working_hours),
+        "reminders": list(reminders),
     }
 
 
@@ -174,10 +194,14 @@ async def update_details(session: AsyncSession, appointment_type_id: UUID, paylo
         appointment_type.confirmation_msg = payload.confirmation_msg
         appointment_type.image_url = payload.image_url
         appointment_type.video_url = payload.video_url
-        appointment_type.booking_email_template = payload.booking_email_template
-        appointment_type.cancellation_email_template = payload.cancellation_email_template
-        appointment_type.reminder_email_hours = payload.reminder_email_hours
-        appointment_type.reminder_sms_hours = payload.reminder_sms_hours
+        await _assert_template_access(session, payload.booking_email_template_id, actor, "booking_confirmation")
+        await _assert_template_access(session, payload.cancellation_email_template_id, actor, "cancellation")
+        await _assert_template_access(session, payload.reminder_email_template_id, actor, "reminder_email")
+        await _assert_template_access(session, payload.reminder_sms_template_id, actor, "reminder_sms")
+        appointment_type.booking_email_template_id = payload.booking_email_template_id
+        appointment_type.cancellation_email_template_id = payload.cancellation_email_template_id
+        appointment_type.reminder_email_template_id = payload.reminder_email_template_id
+        appointment_type.reminder_sms_template_id = payload.reminder_sms_template_id
         _audit(
             session,
             actor,
@@ -325,7 +349,6 @@ async def update_rules(session: AsyncSession, appointment_type_id: UUID, payload
             rule.max_bookings_per_slot = payload.max_per_slot
             rule.allow_guest = payload.allow_invitations
             rule.slot_creation_method = payload.slot_type
-            rule.reminder_hours = payload.reminder_email_hours if hasattr(payload, "reminder_email_hours") else rule.reminder_hours
         else:
             session.add(
                 BookingRule(
@@ -469,6 +492,14 @@ async def send_message(session: AsyncSession, appointment_type_id: UUID, message
 
 async def _assert_owner_read(session: AsyncSession, appointment_type_id: UUID, actor: User) -> AppointmentType:
     return await _assert_owner(session, appointment_type_id, actor)
+
+
+async def _assert_template_access(session: AsyncSession, template_id: UUID | None, actor: User, template_type: str) -> None:
+    if template_id is None:
+        return
+    template = await mail_template_service.get(session, template_id, actor.organization_id)
+    if template.template_type != template_type:
+        raise NotFoundError("mail_template")
 
 
 def _audit(session: AsyncSession, actor: User, action: str, appointment_type_id: UUID, value: dict | None = None) -> AuditLog:

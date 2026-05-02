@@ -1,4 +1,4 @@
-import { CalendarDays, ImagePlus, Link2, Package, Plus, Send, Trash2, Users, X } from "lucide-react"
+import { CalendarDays, ExternalLink, ImagePlus, Link2, Package, Plus, Send, Trash2, Users, X } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 
@@ -9,6 +9,7 @@ import {
   getAppointmentType,
   publishAppointmentType,
   replaceQuestions,
+  replaceReminders,
   replaceResources,
   replaceWorkingHours,
   resourceCandidates,
@@ -18,7 +19,8 @@ import {
   updateRules,
 } from "../../api/appointmentTypes"
 import { errorMessage } from "../../api/client"
-import type { ActivityItem, AppointmentTypeDetail, ResourceCandidate } from "../../api/types"
+import { listMailTemplates, type MailTemplate } from "../../api/mailTemplates"
+import type { ActivityItem, AppointmentTypeDetail, Reminder, ResourceCandidate } from "../../api/types"
 import { Button } from "../../components/ui/Button"
 import { Input, Textarea } from "../../components/ui/Field"
 import { Notice } from "../../components/ui/Notice"
@@ -136,10 +138,15 @@ export function NewTypePage() {
   const [price, setPrice] = useState(0)
   const [imageUrl, setImageUrl] = useState("")
   const [videoUrl, setVideoUrl] = useState("")
-  const [bookingEmailTemplate, setBookingEmailTemplate] = useState("Appointment: Attendee Invitation")
-  const [cancellationEmailTemplate, setCancellationEmailTemplate] = useState("Appointment: Appointment Canceled")
-  const [reminderEmailHours, setReminderEmailHours] = useState(3)
-  const [reminderSmsHours, setReminderSmsHours] = useState(1)
+  const [bookingEmailTemplateId, setBookingEmailTemplateId] = useState<string | null>(null)
+  const [cancellationEmailTemplateId, setCancellationEmailTemplateId] = useState<string | null>(null)
+  const [reminderEmailTemplateId, setReminderEmailTemplateId] = useState<string | null>(null)
+  const [reminderSmsTemplateId, setReminderSmsTemplateId] = useState<string | null>(null)
+  const [reminders, setReminders] = useState<Reminder[]>([
+    { channel: "email", hours_before: 24 },
+    { channel: "sms", hours_before: 2 },
+  ])
+  const [availableTemplates, setAvailableTemplates] = useState<MailTemplate[]>([])
   const [resourceName, setResourceName] = useState("")
   const [resourceCapacity, setResourceCapacity] = useState(1)
   const [resourceCandidatesList, setResourceCandidatesList] = useState<ResourceCandidate[]>([])
@@ -158,6 +165,18 @@ export function NewTypePage() {
       .catch((err) => setMessage(errorMessage(err)))
       .finally(() => setLoading(false))
   }, [appointmentTypeId])
+
+  useEffect(() => {
+    listMailTemplates()
+      .then((templates) => {
+        setAvailableTemplates(templates)
+        setBookingEmailTemplateId((current) => current || templates.find((template) => template.template_type === "booking_confirmation")?.id || null)
+        setCancellationEmailTemplateId((current) => current || templates.find((template) => template.template_type === "cancellation")?.id || null)
+        setReminderEmailTemplateId((current) => current || templates.find((template) => template.template_type === "reminder_email")?.id || null)
+        setReminderSmsTemplateId((current) => current || templates.find((template) => template.template_type === "reminder_sms")?.id || null)
+      })
+      .catch(() => setAvailableTemplates([]))
+  }, [])
 
   useEffect(() => {
     resourceCandidates(bookBy === "user" ? "user" : "resource")
@@ -194,10 +213,11 @@ export function NewTypePage() {
     setPrice(Number(detail.price || 0))
     setImageUrl(detail.image_url || "")
     setVideoUrl(detail.video_url || "")
-    setBookingEmailTemplate(detail.booking_email_template || "Appointment: Attendee Invitation")
-    setCancellationEmailTemplate(detail.cancellation_email_template || "Appointment: Appointment Canceled")
-    setReminderEmailHours(detail.reminder_email_hours ?? 3)
-    setReminderSmsHours(detail.reminder_sms_hours ?? 1)
+    setBookingEmailTemplateId(detail.booking_email_template_id || null)
+    setCancellationEmailTemplateId(detail.cancellation_email_template_id || null)
+    setReminderEmailTemplateId(detail.reminder_email_template_id || null)
+    setReminderSmsTemplateId(detail.reminder_sms_template_id || null)
+    setReminders(detail.reminders?.length ? detail.reminders : [{ channel: "email", hours_before: 24 }, { channel: "sms", hours_before: 2 }])
     setResources(detail.resources.length ? detail.resources.map((resource) => ({
       id: resource.id,
       name: resource.name,
@@ -248,10 +268,10 @@ export function NewTypePage() {
         confirmation_msg: confirmationMsg,
         image_url: imageUrl,
         video_url: videoUrl,
-        booking_email_template: bookingEmailTemplate,
-        cancellation_email_template: cancellationEmailTemplate,
-        reminder_email_hours: reminderEmailHours,
-        reminder_sms_hours: reminderSmsHours,
+        booking_email_template_id: bookingEmailTemplateId,
+        cancellation_email_template_id: cancellationEmailTemplateId,
+        reminder_email_template_id: reminderEmailTemplateId,
+        reminder_sms_template_id: reminderSmsTemplateId,
       }
       const id = appointmentTypeId
         ? (await updateAppointmentType(appointmentTypeId, payload)).id
@@ -274,6 +294,10 @@ export function NewTypePage() {
         question_type: question.question_type,
         required: question.required,
         options: question.optionsText ? question.optionsText.split(",").map((option) => option.trim()).filter(Boolean) : undefined,
+      })))
+      await replaceReminders(id, reminders.map((reminder) => ({
+        channel: reminder.channel,
+        hours_before: Number(reminder.hours_before),
       })))
       await updateRules(id, {
         requires_confirmation: requiresConfirmation,
@@ -615,20 +639,35 @@ export function NewTypePage() {
                     <section className="grid content-start gap-5">
                       <h3 className="border-b border-line pb-2 text-sm font-bold uppercase">Emails & SMS</h3>
                       <TwoColumn label="Reminders">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span>Email</span>
-                          <Input type="number" min={0} max={168} value={reminderEmailHours} onChange={(event) => setReminderEmailHours(Number(event.target.value))} className="w-20" />
-                          <span>hours</span>
-                          <span>SMS</span>
-                          <Input type="number" min={0} max={168} value={reminderSmsHours} onChange={(event) => setReminderSmsHours(Number(event.target.value))} className="w-20" />
-                          <span>hours</span>
-                        </div>
+                        <ReminderChipList reminders={reminders} onChange={setReminders} />
                       </TwoColumn>
                       <TwoColumn label="Booking Email ?">
-                        <Input value={bookingEmailTemplate} onChange={(event) => setBookingEmailTemplate(event.target.value)} />
+                        <TemplateSelect
+                          templates={availableTemplates.filter((template) => template.template_type === "booking_confirmation")}
+                          value={bookingEmailTemplateId}
+                          onChange={setBookingEmailTemplateId}
+                        />
                       </TwoColumn>
                       <TwoColumn label="Cancellation Email ?">
-                        <Input value={cancellationEmailTemplate} onChange={(event) => setCancellationEmailTemplate(event.target.value)} />
+                        <TemplateSelect
+                          templates={availableTemplates.filter((template) => template.template_type === "cancellation")}
+                          value={cancellationEmailTemplateId}
+                          onChange={setCancellationEmailTemplateId}
+                        />
+                      </TwoColumn>
+                      <TwoColumn label="Reminder Email ?">
+                        <TemplateSelect
+                          templates={availableTemplates.filter((template) => template.template_type === "reminder_email")}
+                          value={reminderEmailTemplateId}
+                          onChange={setReminderEmailTemplateId}
+                        />
+                      </TwoColumn>
+                      <TwoColumn label="Reminder SMS ?">
+                        <TemplateSelect
+                          templates={availableTemplates.filter((template) => template.template_type === "reminder_sms")}
+                          value={reminderSmsTemplateId}
+                          onChange={setReminderSmsTemplateId}
+                        />
                       </TwoColumn>
                     </section>
                   </div>
@@ -827,6 +866,105 @@ function EditableTable({ headers, addLabel, onAdd, children }: { headers: string
           </tr>
         </tbody>
       </table>
+    </div>
+  )
+}
+
+function ReminderChipList({ reminders, onChange }: { reminders: Reminder[]; onChange: (reminders: Reminder[]) => void }) {
+  const [adding, setAdding] = useState(false)
+  const [channel, setChannel] = useState<"email" | "sms">("email")
+  const [hours, setHours] = useState(3)
+  const [error, setError] = useState("")
+
+  function addReminder() {
+    const normalized = Math.max(0, Math.min(720, Number(hours)))
+    if (reminders.some((reminder) => reminder.channel === channel && Number(reminder.hours_before) === normalized)) {
+      setError("That reminder already exists.")
+      return
+    }
+    if (reminders.filter((reminder) => reminder.channel === channel).length >= 5) {
+      setError("Maximum 5 reminders per channel.")
+      return
+    }
+    onChange([...reminders, { channel, hours_before: normalized }])
+    setAdding(false)
+    setError("")
+  }
+
+  return (
+    <div className="grid gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        {reminders.map((reminder, index) => (
+          <span key={`${reminder.channel}-${reminder.hours_before}-${index}`} className="inline-flex items-center gap-1 rounded-full bg-[#e9dddf] px-3 py-1 font-semibold text-ink">
+            {reminder.channel === "email" ? "Email" : "SMS"} - {reminder.hours_before} Hours
+            <button
+              type="button"
+              onClick={() => onChange(reminders.filter((_item, reminderIndex) => reminderIndex !== index))}
+              className="rounded-full p-0.5 hover:bg-white"
+              aria-label="Remove reminder"
+            >
+              <X size={13} />
+            </button>
+          </span>
+        ))}
+        {!adding && (
+          <button type="button" className="font-bold text-signal" onClick={() => setAdding(true)}>
+            Add reminder
+          </button>
+        )}
+      </div>
+      {adding && (
+        <div className="flex flex-wrap items-center gap-2">
+          <select value={channel} onChange={(event) => setChannel(event.target.value as "email" | "sms")} className="h-10 rounded-md border border-line bg-white px-3 text-sm">
+            <option value="email">Email</option>
+            <option value="sms">SMS</option>
+          </select>
+          <Input type="number" min={0} max={720} value={hours} onChange={(event) => setHours(Number(event.target.value))} className="w-24" />
+          <span>hours before</span>
+          <Button type="button" variant="secondary" onClick={addReminder}>Add</Button>
+          <Button type="button" variant="ghost" onClick={() => setAdding(false)}>Cancel</Button>
+        </div>
+      )}
+      {error && <p className="text-xs font-semibold text-red-600">{error}</p>}
+    </div>
+  )
+}
+
+function TemplateSelect({
+  templates,
+  value,
+  onChange,
+}: {
+  templates: MailTemplate[]
+  value: string | null
+  onChange: (value: string | null) => void
+}) {
+  const navigate = useNavigate()
+  return (
+    <div className="flex min-w-0 items-center gap-2">
+      <select
+        value={value || ""}
+        onChange={(event) => onChange(event.target.value || null)}
+        disabled={templates.length === 0}
+        className="h-10 min-w-0 flex-1 rounded-md border border-line bg-white px-3 text-sm"
+      >
+        <option value="">{templates.length ? "Select template..." : "No templates available"}</option>
+        {templates.map((template) => (
+          <option key={template.id} value={template.id}>
+            {template.name}{template.is_system_default ? " (System)" : ""}
+          </option>
+        ))}
+      </select>
+      <Button
+        type="button"
+        variant="secondary"
+        disabled={!value}
+        onClick={() => value && navigate(`/organiser/mail-templates/${value}`)}
+        title="Open template"
+        className="px-3"
+      >
+        <ExternalLink size={14} />
+      </Button>
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { api } from "./client"
-import type { ActivityItem, AppointmentTypeDetail, AppointmentTypeListItem, Paginated, Resource, ResourceCandidate } from "./types"
+import type { ActivityItem, AppointmentTypeDetail, AppointmentTypeListItem, Paginated, Reminder, Resource, ResourceCandidate } from "./types"
 
 export async function listAppointmentTypes(published: boolean | null = true): Promise<Paginated<AppointmentTypeListItem>> {
   const params = published === null ? {} : { published }
@@ -47,10 +47,10 @@ export async function updateAppointmentType(
     confirmation_msg?: string
     image_url?: string
     video_url?: string
-    booking_email_template?: string
-    cancellation_email_template?: string
-    reminder_email_hours?: number | null
-    reminder_sms_hours?: number | null
+    booking_email_template_id?: string | null
+    cancellation_email_template_id?: string | null
+    reminder_email_template_id?: string | null
+    reminder_sms_template_id?: string | null
   },
 ) {
   const res = await api.patch<AppointmentTypeDetail>(`/appointment-types/${appointmentTypeId}`, payload)
@@ -93,6 +93,11 @@ export async function replaceQuestions(
 
 export async function updateRules(appointmentTypeId: string, payload: Record<string, unknown>) {
   const res = await api.post<AppointmentTypeDetail>(`/appointment-types/${appointmentTypeId}/booking-rules`, payload)
+  return res.data
+}
+
+export async function replaceReminders(appointmentTypeId: string, reminders: Array<{ channel: "email" | "sms"; hours_before: number }>): Promise<Reminder[]> {
+  const res = await api.put<Reminder[]>(`/appointment-types/${appointmentTypeId}/reminders`, { reminders })
   return res.data
 }
 

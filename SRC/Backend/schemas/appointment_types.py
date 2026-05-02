@@ -4,6 +4,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from SRC.Backend.schemas.reminders import ReminderOut
+
 
 class AppointmentTypeCreate(BaseModel):
     title: str = Field(min_length=2, max_length=200)
@@ -30,10 +32,10 @@ class AppointmentTypeUpdate(BaseModel):
     confirmation_msg: str | None = None
     image_url: str | None = None
     video_url: str | None = None
-    booking_email_template: str | None = "Appointment: Attendee Invitation"
-    cancellation_email_template: str | None = "Appointment: Appointment Canceled"
-    reminder_email_hours: int | None = Field(default=3, ge=0, le=168)
-    reminder_sms_hours: int | None = Field(default=1, ge=0, le=168)
+    booking_email_template_id: UUID | None = None
+    cancellation_email_template_id: UUID | None = None
+    reminder_email_template_id: UUID | None = None
+    reminder_sms_template_id: UUID | None = None
 
 
 class AppointmentTypeUpdateRules(BaseModel):
@@ -162,10 +164,10 @@ class AppointmentTypeOut(BaseModel):
     confirmation_msg: str | None
     image_url: str | None
     video_url: str | None
-    booking_email_template: str | None
-    cancellation_email_template: str | None
-    reminder_email_hours: int | None
-    reminder_sms_hours: int | None
+    booking_email_template_id: UUID | None
+    cancellation_email_template_id: UUID | None
+    reminder_email_template_id: UUID | None
+    reminder_sms_template_id: UUID | None
     slot_interval_minutes: int | None
 
 
@@ -173,6 +175,7 @@ class AppointmentTypeDetail(AppointmentTypeOut):
     resources: list[ResourceOut] = []
     questions: list[QuestionOut] = []
     working_hours: list[WorkingHourOut] = []
+    reminders: list[ReminderOut] = []
 
 
 class ShareLinkOut(BaseModel):

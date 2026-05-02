@@ -62,6 +62,12 @@ export interface Question {
   display_order: number
 }
 
+export interface Reminder {
+  id?: string
+  channel: "email" | "sms"
+  hours_before: number
+}
+
 export interface AppointmentTypeDetail {
   id: string
   organiser_id: string
@@ -92,14 +98,15 @@ export interface AppointmentTypeDetail {
   confirmation_msg?: string | null
   image_url?: string | null
   video_url?: string | null
-  booking_email_template?: string | null
-  cancellation_email_template?: string | null
-  reminder_email_hours?: number | null
-  reminder_sms_hours?: number | null
+  booking_email_template_id?: string | null
+  cancellation_email_template_id?: string | null
+  reminder_email_template_id?: string | null
+  reminder_sms_template_id?: string | null
   slot_interval_minutes?: number | null
   resources: Resource[]
   questions: Question[]
   working_hours: WorkingHour[]
+  reminders: Reminder[]
 }
 
 export interface ActivityItem {

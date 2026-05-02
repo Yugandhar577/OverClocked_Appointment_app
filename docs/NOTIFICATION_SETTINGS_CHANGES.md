@@ -122,3 +122,35 @@ docker compose down && docker compose build && docker compose up
 - Per-customer language / localisation not yet supported
 - SMS only fires when `sms_enabled = true` AND Twilio creds are configured
 - `AppointmentType.booking_email_template` / `cancellation_email_template` fields (string names from migration 004) are superseded by the new template body fields and can be cleaned up in a future migration
+
+## v2 - Per-AppointmentType Templates + Multi-Reminder
+
+Migration `007_mail_templates_and_reminders.py` replaces the org-wide `organization_notification_settings` workflow with first-class mail templates and reminder rows.
+
+### Database
+
+- `mail_templates` stores system defaults and organisation-owned templates. System defaults have `organization_id = NULL` and `is_system_default = true`; custom templates belong to one organisation.
+- `appointment_type_reminders` stores multiple reminder chips per appointment type using `(channel, hours_before)`, with `email` and `sms` channels supported.
+- `appointment_types` now references templates through:
+  - `booking_email_template_id`
+  - `cancellation_email_template_id`
+  - `reminder_email_template_id`
+  - `reminder_sms_template_id`
+- `organization_notification_settings` is removed in v2.
+
+### API Surface
+
+- `GET /api/v1/organiser/mail-templates`
+- `POST /api/v1/organiser/mail-templates`
+- `GET /api/v1/organiser/mail-templates/{id}`
+- `PUT /api/v1/organiser/mail-templates/{id}`
+- `POST /api/v1/organiser/mail-templates/{id}/reset`
+- `POST /api/v1/organiser/mail-templates/{id}/preview`
+- `GET /api/v1/organiser/mail-templates/placeholders`
+- `PUT /api/v1/appointment-types/{id}/reminders`
+
+### Migration Path
+
+Existing AppointmentTypes are linked to the four seeded system defaults: Booking Confirmation, Cancellation, Reminder Email, and Reminder SMS. Existing `reminder_email_hours` / `reminder_sms_hours` values are converted into reminder rows; when absent, the migration creates `Email - 24 Hours` and `SMS - 2 Hours`.
+
+The reminder dispatcher now reads `appointment_type_reminders` directly and uses composite event types such as `reminder_email_24` so multiple reminders per channel remain idempotent.

@@ -24,7 +24,8 @@ from SRC.Backend.schemas.appointment_types import (
     WorkingHourIn,
 )
 from SRC.Backend.schemas.common import Paginated
-from SRC.Backend.services import appointment_type_service
+from SRC.Backend.schemas.reminders import ReminderListReplace, ReminderOut
+from SRC.Backend.services import appointment_type_reminders_service, appointment_type_service
 
 router = APIRouter(prefix="/appointment-types", tags=["appointment-types"])
 
@@ -36,6 +37,7 @@ def _detail_response(detail: dict) -> AppointmentTypeDetail:
         "resources": detail["resources"],
         "questions": detail["questions"],
         "working_hours": detail.get("working_hours", []),
+        "reminders": detail.get("reminders", []),
     }
     return AppointmentTypeDetail.model_validate(data)
 
@@ -153,6 +155,16 @@ async def update_rules(
     session: AsyncSession = Depends(get_db),
 ):
     return await appointment_type_service.update_rules(session, appointment_type_id, payload, current_user)
+
+
+@router.put("/{appointment_type_id}/reminders", response_model=list[ReminderOut])
+async def replace_reminders(
+    appointment_type_id: UUID,
+    payload: ReminderListReplace,
+    current_user: User = Depends(require_role("organiser", "admin")),
+    session: AsyncSession = Depends(get_db),
+):
+    return await appointment_type_reminders_service.replace(session, appointment_type_id, payload.reminders, current_user)
 
 
 @router.patch("/{appointment_type_id}/publish", response_model=PublishOut)

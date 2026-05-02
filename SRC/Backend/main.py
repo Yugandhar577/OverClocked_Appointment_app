@@ -8,8 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from SRC.Backend.config import get_settings
 from SRC.Backend.core.errors import register_exception_handlers
 from SRC.Backend.db.session import engine
-from SRC.Backend.routes import admin, advanced, appointment_types, auth, bookings, health, organizations
-from SRC.Backend.routes import organiser_settings
+from SRC.Backend.routes import admin, advanced, appointment_types, auth, bookings, health, mail_templates, organizations
 
 logger = logging.getLogger(__name__)
 scheduler = AsyncIOScheduler(timezone="UTC")
@@ -74,7 +73,7 @@ def create_app() -> FastAPI:
     app.include_router(admin.router, prefix="/api/v1")
     app.include_router(organizations.router, prefix="/api/v1")
     app.include_router(advanced.router, prefix="/api/v1")
-    app.include_router(organiser_settings.router, prefix="/api/v1")
+    app.include_router(mail_templates.router, prefix="/api/v1")
     return app
 
 

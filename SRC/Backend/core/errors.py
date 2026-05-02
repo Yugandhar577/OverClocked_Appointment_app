@@ -126,6 +126,11 @@ class GoogleNotConfiguredError(AppError):
     detail = "google_not_configured"
 
 
+class ImmutableTemplateError(AppError):
+    status_code = 400
+    detail = "immutable_template"
+
+
 def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(AppError)
     async def app_error_handler(_request: Request, exc: AppError):

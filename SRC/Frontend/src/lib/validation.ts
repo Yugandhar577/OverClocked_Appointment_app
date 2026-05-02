@@ -52,23 +52,22 @@ export const profileSchema = z.object({
     .optional(),
 })
 
-export const notificationSettingsSchema = z.object({
-  reminder_email_hours: z.coerce.number().int().min(0, "Must be 0 or more").max(720, "Max 720 hours").nullable(),
-  reminder_sms_hours: z.coerce.number().int().min(0, "Must be 0 or more").max(720, "Max 720 hours").nullable(),
-  email_enabled: z.boolean(),
-  sms_enabled: z.boolean(),
-  sender_name: z.string().min(1, "Sender name is required").max(120, "Max 120 characters"),
-  reminder_email_subject: z.string().min(1, "Subject is required").max(200, "Max 200 characters"),
-  reminder_email_body: z.string().min(1, "Body is required").max(5000, "Max 5000 characters"),
-  reminder_sms_body: z.string().max(480, "Max 480 characters"),
-  booking_confirmation_subject: z.string().min(1, "Subject is required").max(200, "Max 200 characters"),
-  booking_confirmation_body: z.string().min(1, "Body is required").max(5000, "Max 5000 characters"),
-  cancellation_subject: z.string().min(1, "Subject is required").max(200, "Max 200 characters"),
-  cancellation_body: z.string().min(1, "Body is required").max(5000, "Max 5000 characters"),
+export const mailTemplateSchema = z.object({
+  template_type: z.enum(["booking_confirmation", "cancellation", "reminder_email", "reminder_sms"]),
+  name: z.string().min(1, "Name is required").max(200, "Max 200 characters"),
+  subject: z.string().max(300, "Max 300 characters").nullable().optional(),
+  body_html: z.string().min(1, "Body is required").max(50000, "Max 50000 characters"),
+  description: z.string().max(1000, "Max 1000 characters").nullable().optional(),
+})
+
+export const reminderSchema = z.object({
+  channel: z.enum(["email", "sms"]),
+  hours_before: z.coerce.number().int().min(0, "Must be 0 or more").max(720, "Max 720 hours"),
 })
 
 export type LoginFormData = z.infer<typeof loginSchema>
 export type SignupFormData = z.infer<typeof signupSchema>
 export type OtpFormData = z.infer<typeof otpSchema>
 export type ProfileFormData = z.infer<typeof profileSchema>
-export type NotificationSettingsFormData = z.infer<typeof notificationSettingsSchema>
+export type MailTemplateFormData = z.infer<typeof mailTemplateSchema>
+export type ReminderFormData = z.infer<typeof reminderSchema>

@@ -37,59 +37,60 @@ async def queue_notification(
     recipient_id: UUID | None = None,
 ) -> list[Notification]:
     from SRC.Backend.db.models import Organization, User
-    from SRC.Backend.services import notification_settings_service, template_service
+    from SRC.Backend.services import mail_template_service, template_service
 
     organiser = await session.get(User, appointment_type.organiser_id)
     org_id = organiser.organization_id if organiser else None
-
-    notif_settings = await notification_settings_service.get_or_create(session, org_id)
-
     org = (await session.get(Organization, org_id)) if org_id else None
     context = template_service.build_context(appointment, appointment_type, org, slot)
 
     target_recipient = recipient_id or appointment.customer_id
     created: list[Notification] = []
+    template_type, template_attr, channel = _template_for_event(event_type)
 
-    if notif_settings.email_enabled:
-        if event_type == "booking_created":
-            subject = template_service.render(notif_settings.booking_confirmation_subject, context)
-            body = template_service.render(notif_settings.booking_confirmation_body, context)
-        elif event_type == "booking_cancelled":
-            subject = template_service.render(notif_settings.cancellation_subject, context)
-            body = template_service.render(notif_settings.cancellation_body, context)
-        elif event_type in ("booking_confirmed", "booking_pending"):
-            subject = template_service.render(notif_settings.booking_confirmation_subject, context)
-            body = template_service.render(notif_settings.booking_confirmation_body, context)
-        elif event_type == "reminder_email":
-            subject = template_service.render(notif_settings.reminder_email_subject, context)
-            body = template_service.render(notif_settings.reminder_email_body, context)
-        else:
-            subject = f"Update: {appointment.confirmation_code}"
-            body = f"Your booking {appointment.confirmation_code} — {event_type}."
-
-        notif = Notification(
+    if not template_type:
+        notification = Notification(
             appointment_id=appointment.id,
             recipient_id=target_recipient,
             channel="email",
             event_type=event_type,
-            subject=subject,
-            body=body,
+            subject=f"Update: {appointment.confirmation_code}",
+            body=f"Your booking {appointment.confirmation_code} - {event_type}.",
             status="queued",
         )
-        session.add(notif)
-        created.append(notif)
+        session.add(notification)
+        return [notification]
 
-    if notif_settings.sms_enabled and event_type in ("booking_created", "booking_cancelled", "reminder_sms"):
-        sms_body = template_service.render(notif_settings.reminder_sms_body, context)
-        sms_notif = Notification(
-            appointment_id=appointment.id,
-            recipient_id=target_recipient,
-            channel="sms",
-            event_type=event_type,
-            body=sms_body,
-            status="queued",
-        )
-        session.add(sms_notif)
-        created.append(sms_notif)
+    template_id = getattr(appointment_type, template_attr, None) if template_attr else None
+    template = await mail_template_service.get(session, template_id, org_id) if template_id else None
+    if template is None:
+        template = await mail_template_service.get_default(session, template_type)
+    if template is None:
+        return created
 
+    subject = template_service.render(template.subject or "", context) if template.subject else None
+    body = template_service.render(template.body_html, context)
+    notification = Notification(
+        appointment_id=appointment.id,
+        recipient_id=target_recipient,
+        channel=channel,
+        event_type=event_type,
+        subject=subject if channel == "email" else None,
+        body=body,
+        status="queued",
+    )
+    session.add(notification)
+    created.append(notification)
     return created
+
+
+def _template_for_event(event_type: str) -> tuple[str | None, str | None, str]:
+    if event_type in {"booking_created", "booking_confirmed", "booking_pending"}:
+        return "booking_confirmation", "booking_email_template_id", "email"
+    if event_type == "booking_cancelled":
+        return "cancellation", "cancellation_email_template_id", "email"
+    if event_type.startswith("reminder_email"):
+        return "reminder_email", "reminder_email_template_id", "email"
+    if event_type.startswith("reminder_sms"):
+        return "reminder_sms", "reminder_sms_template_id", "sms"
+    return None, None, "email"
