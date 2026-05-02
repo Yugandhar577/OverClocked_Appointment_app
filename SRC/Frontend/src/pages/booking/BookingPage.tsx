@@ -1,8 +1,9 @@
 import { CalendarDays, Clock, MapPin } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, type FormEvent } from "react"
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom"
 
 import { getAppointmentType, getAppointmentTypeByShare } from "../../api/appointmentTypes"
+import { joinWaitlist } from "../../api/advanced"
 import { availability, createBooking } from "../../api/bookings"
 import { errorMessage } from "../../api/client"
 import type { AppointmentTypeDetail, AvailabilitySlot } from "../../api/types"
@@ -11,6 +12,7 @@ import { Button } from "../../components/ui/Button"
 import { Field, Input, Select, Textarea } from "../../components/ui/Field"
 import { Notice } from "../../components/ui/Notice"
 import { formatTime, todayIsoDate } from "../../lib/format"
+import { loadFeatureFlags } from "../../lib/featureFlags"
 
 function addDaysIso(baseIso: string, days: number) {
   const value = new Date(`${baseIso}T00:00:00`)
@@ -34,9 +36,15 @@ export function BookingPage({ share = false }: { share?: boolean }) {
   const [slotHint, setSlotHint] = useState("")
   const [loadingSlots, setLoadingSlots] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [waitlistEnabled, setWaitlistEnabled] = useState(false)
+  const [waitlistMessage, setWaitlistMessage] = useState("")
 
   const appointmentTypeId = share ? undefined : params.appointmentTypeId
   const shareToken = share ? params.shareToken : undefined
+
+  useEffect(() => {
+    loadFeatureFlags().then((flags) => setWaitlistEnabled(Boolean(flags.ENABLE_WAITLIST)))
+  }, [])
 
   useEffect(() => {
     const load = shareToken ? getAppointmentTypeByShare(shareToken) : appointmentTypeId ? getAppointmentType(appointmentTypeId) : null
@@ -95,7 +103,7 @@ export function BookingPage({ share = false }: { share?: boolean }) {
     [answers, detail],
   )
 
-  async function submit(event: React.FormEvent) {
+  async function submit(event: FormEvent) {
     event.preventDefault()
     if (!detail || !slotId) return
     if (!auth.user) {
@@ -132,12 +140,33 @@ export function BookingPage({ share = false }: { share?: boolean }) {
     }
   }
 
+  async function handleJoinWaitlist() {
+    if (!detail) return
+    if (!auth.user) {
+      navigate("/login", { state: { from: location.pathname } })
+      return
+    }
+    setError("")
+    setWaitlistMessage("")
+    try {
+      await joinWaitlist({
+        appointment_type_id: detail.id,
+        slot_id: slotId || undefined,
+        notes: `Requested date ${date}`,
+      })
+      setWaitlistMessage("You have joined the waitlist for this appointment.")
+    } catch (err) {
+      setError(errorMessage(err))
+    }
+  }
+
   if (!detail && !error) return <Notice>Loading appointment type...</Notice>
 
   return (
     <form className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]" onSubmit={submit}>
       <section className="grid gap-5">
         {error && <Notice tone="error">{error}</Notice>}
+        {waitlistMessage && <Notice tone="success">{waitlistMessage}</Notice>}
         {detail && (
           <>
             <div className="border-b border-line pb-5">
@@ -209,6 +238,11 @@ export function BookingPage({ share = false }: { share?: boolean }) {
                 </div>
                 {loadingSlots && <Notice>Loading slots...</Notice>}
                 {!loadingSlots && slots.length === 0 && <Notice>No slots available for this date.</Notice>}
+                {!loadingSlots && slots.length === 0 && waitlistEnabled && (
+                  <Button type="button" variant="secondary" onClick={handleJoinWaitlist}>
+                    Join waitlist
+                  </Button>
+                )}
               </div>
               {detail.manage_capacity && (
                 <Field label="Party size">

@@ -21,6 +21,18 @@ class Settings(BaseSettings):
     future_days_limit_default: int = 30
     otp_ttl_seconds: int = 600
     reset_token_ttl_seconds: int = 900
+    enable_waitlist: bool = False
+    enable_booking_cart: bool = False
+    enable_variable_duration: bool = False
+    enable_recurring_bookings: bool = False
+    enable_no_show_protection: bool = False
+    enable_smart_assignment: bool = False
+    enable_dynamic_pricing: bool = False
+    enable_notification_workflows: bool = False
+    enable_admin_manual_booking: bool = False
+    enable_appointment_analytics: bool = False
+    enable_theme_customization: bool = False
+    enable_odoo_style_ui: bool = False
 
 
 @lru_cache
