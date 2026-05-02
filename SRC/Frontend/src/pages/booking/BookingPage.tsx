@@ -1,5 +1,6 @@
 import { CalendarDays, Clock, MapPin } from "lucide-react"
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react"
+import { useEffect, useMemo, useState, type FormEvent } from "react"
+import { DayPicker } from "react-day-picker"
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom"
 
 import { getAppointmentType, getAppointmentTypeByShare } from "../../api/appointmentTypes"
@@ -9,15 +10,28 @@ import { errorMessage } from "../../api/client"
 import type { AppointmentTypeDetail, AvailabilitySlot } from "../../api/types"
 import { useAuth } from "../../auth/useAuth"
 import { Button } from "../../components/ui/Button"
-import { Field, Input, Select, Textarea } from "../../components/ui/Field"
+import { Field, Select, Textarea } from "../../components/ui/Field"
 import { Notice } from "../../components/ui/Notice"
 import { formatTime, todayIsoDate } from "../../lib/format"
 import { loadFeatureFlags } from "../../lib/featureFlags"
+import "react-day-picker/dist/style.css"
 
 function addDaysIso(baseIso: string, days: number) {
   const value = new Date(`${baseIso}T00:00:00`)
   value.setDate(value.getDate() + days)
   return value.toISOString().slice(0, 10)
+}
+
+function parseIsoDate(value: string) {
+  const [year, month, day] = value.split("-").map(Number)
+  return new Date(year, (month ?? 1) - 1, day ?? 1)
+}
+
+function toIsoDate(value: Date) {
+  const year = value.getFullYear()
+  const month = String(value.getMonth() + 1).padStart(2, "0")
+  const day = String(value.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
 }
 
 export function BookingPage({ share = false }: { share?: boolean }) {
@@ -38,7 +52,6 @@ export function BookingPage({ share = false }: { share?: boolean }) {
   const [saving, setSaving] = useState(false)
   const [waitlistEnabled, setWaitlistEnabled] = useState(false)
   const [waitlistMessage, setWaitlistMessage] = useState("")
-  const dateInputRef = useRef<HTMLInputElement>(null)
 
   const appointmentTypeId = share ? undefined : params.appointmentTypeId
   const shareToken = share ? params.shareToken : undefined
@@ -220,33 +233,26 @@ export function BookingPage({ share = false }: { share?: boolean }) {
                 <Notice tone="error">No active resource is attached to this appointment type.</Notice>
               )}
               <div className="grid gap-2">
-                <label className="text-sm font-semibold text-ink">Date</label>
-                <div className="flex gap-2">
-                  <Input
-                    ref={dateInputRef}
-                    className="flex-1"
-                    type="date"
-                    value={date}
-                    min={todayIsoDate()}
-                    onChange={(event) => setDate(event.target.value)}
-                  />
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    title="Open calendar"
-                    onClick={() => {
-                      const input = dateInputRef.current
-                      if (!input) return
-                      if (typeof input.showPicker === "function") input.showPicker()
-                      else input.focus()
-                    }}
-                  >
-                    <CalendarDays size={17} />
-                  </Button>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <label className="text-sm font-semibold text-ink">Select a date</label>
                   <Button type="button" variant="secondary" onClick={openGoogleCalendar}>
                     Google Calendar
                   </Button>
                 </div>
+                <div className="rounded-md border border-line bg-white p-3">
+                  <DayPicker
+                    mode="single"
+                    selected={parseIsoDate(date)}
+                    month={parseIsoDate(date)}
+                    onSelect={(selected) => {
+                      if (!selected) return
+                      setDate(toIsoDate(selected))
+                    }}
+                    disabled={{ before: parseIsoDate(todayIsoDate()) }}
+                    showOutsideDays
+                  />
+                </div>
+                <p className="text-xs text-neutral-600">Timezone: {Intl.DateTimeFormat().resolvedOptions().timeZone}</p>
               </div>
               <div className="grid gap-2">
                 <label className="text-sm font-semibold text-ink">Slots</label>

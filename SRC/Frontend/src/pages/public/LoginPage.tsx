@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom"
 
 import { errorMessage } from "../../api/client"
 import { useAuth } from "../../auth/useAuth"
+import { canUseRequestedRoute, defaultRouteForRoles } from "../../lib/postLoginRedirect"
 import { Button } from "../../components/ui/Button"
 import { Field, Input } from "../../components/ui/Field"
 import { Notice } from "../../components/ui/Notice"
@@ -12,19 +13,6 @@ const demoAccounts = [
   { label: "Organiser", email: "org1@test.local", password: "Organiser123!" },
   { label: "Admin", email: "admin@test.local", password: "Admin123!" },
 ]
-
-function defaultRouteForRoles(roles: string[]) {
-  if (roles.includes("admin")) return "/admin"
-  if (roles.includes("organiser")) return "/organiser/types"
-  return "/"
-}
-
-function canUseRequestedRoute(roles: string[], route?: string) {
-  if (!route) return false
-  if (roles.includes("admin")) return route.startsWith("/admin")
-  if (roles.includes("organiser")) return route.startsWith("/organiser") || route === "/admin"
-  return !route.startsWith("/admin") && !route.startsWith("/organiser")
-}
 
 export function LoginPage() {
   const [email, setEmail] = useState("cust1@test.local")
