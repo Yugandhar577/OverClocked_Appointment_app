@@ -113,4 +113,21 @@ export interface BookingCreateResponse {
 
 export interface AdminUser extends User {
   created_at: string
+  organization_id?: string | null
+}
+
+export interface OrganizationListItem {
+  id: string
+  name: string
+  domain: string
+  status: string
+  active_members: number
+  created_at: string
+}
+
+export interface OrganizationDetail extends OrganizationListItem {
+  total_members: number
+  active_instances: number
+  admin_report_notes: string | null
+  updated_at: string
 }

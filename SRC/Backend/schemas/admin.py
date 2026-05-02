@@ -14,6 +14,7 @@ class AdminUserOut(BaseModel):
     is_active: bool
     timezone: str
     phone: str | None
+    organization_id: UUID | None = None
     created_at: datetime
     roles: list[str]
 
