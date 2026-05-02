@@ -3,6 +3,7 @@ import { useEffect, useState, type ReactNode } from "react"
 import { NavLink, Outlet } from "react-router-dom"
 
 import { DEFAULT_FEATURE_FLAGS, loadFeatureFlags } from "../../lib/featureFlags"
+import { useAuth } from "../../auth/useAuth"
 
 function AdminNavLink({ to, label, icon }: { to: string; label: string; icon: ReactNode }) {
   return (
@@ -28,6 +29,8 @@ function clsxNav(isActive: boolean) {
 
 export function AdminLayout() {
   const [flags, setFlags] = useState<typeof DEFAULT_FEATURE_FLAGS>(DEFAULT_FEATURE_FLAGS)
+  const { hasRole } = useAuth()
+  const isAdmin = hasRole("admin")
 
   useEffect(() => {
     loadFeatureFlags().then(setFlags)
@@ -45,8 +48,8 @@ export function AdminLayout() {
             {flags.ENABLE_ADMIN_MANUAL_BOOKING && <AdminNavLink to="/admin/manual-booking" label="Manual booking" icon={<CalendarPlus size={18} />} />}
             {flags.ENABLE_RECURRING_BOOKINGS && <AdminNavLink to="/admin/packages" label="Packages" icon={<Package size={18} />} />}
             {flags.ENABLE_THEME_CUSTOMIZATION && <AdminNavLink to="/admin/theme" label="Theme" icon={<Palette size={18} />} />}
-            <AdminNavLink to="/admin/users" label="Users" icon={<Users size={18} />} />
-            <AdminNavLink to="/admin/organizations" label="Organizations" icon={<Building2 size={18} />} />
+            {isAdmin && <AdminNavLink to="/admin/users" label="Users" icon={<Users size={18} />} />}
+            {isAdmin && <AdminNavLink to="/admin/organizations" label="Organizations" icon={<Building2 size={18} />} />}
           </nav>
         </div>
       </aside>

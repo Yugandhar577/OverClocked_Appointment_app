@@ -64,7 +64,7 @@ async def replace_roles(
 
 @router.get("/stats", response_model=AdminStatsOut)
 async def stats(
-    _current_user: User = Depends(require_role("admin")),
+    _current_user: User = Depends(require_role("organiser", "admin")),
     session: AsyncSession = Depends(get_db),
 ):
     return await admin_service.stats(session)

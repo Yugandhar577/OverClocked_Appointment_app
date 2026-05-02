@@ -26,7 +26,7 @@ async def list_organizations(
     search: str | None = None,
     page: int = 1,
     page_size: int = Query(default=20, le=100),
-    _current_user: User = Depends(require_role("admin")),
+    _current_user: User = Depends(require_role("organiser", "admin")),
     session: AsyncSession = Depends(get_db),
 ):
     items, total = await organization_service.list_organizations(session, status, search, page, page_size)

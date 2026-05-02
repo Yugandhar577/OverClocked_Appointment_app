@@ -50,7 +50,7 @@ export function App() {
           <Route path="/organiser/types/:appointmentTypeId" element={<NewTypePage />} />
           <Route path="/organiser/bookings" element={<OrganiserBookingsPage />} />
         </Route>
-        <Route element={<RequireAuth roles={["admin"]} />}>
+        <Route element={<RequireAuth roles={["organiser", "admin"]} />}>
           <Route element={<AdminLayout />}>
             <Route path="/admin" element={<AdminDashboardPage />} />
             <Route path="/admin/analytics" element={<AnalyticsDashboardPage />} />
@@ -58,9 +58,11 @@ export function App() {
             <Route path="/admin/manual-booking" element={<ManualBookingPage />} />
             <Route path="/admin/packages" element={<PackagesPage />} />
             <Route path="/admin/theme" element={<ThemeSettingsPage />} />
-            <Route path="/admin/users" element={<AdminUsersPage />} />
-            <Route path="/admin/organizations" element={<AdminOrganizationsPage />} />
-            <Route path="/admin/organizations/:orgId" element={<AdminOrganizationDetailPage />} />
+            <Route element={<RequireAuth roles={["admin"]} />}>
+              <Route path="/admin/users" element={<AdminUsersPage />} />
+              <Route path="/admin/organizations" element={<AdminOrganizationsPage />} />
+              <Route path="/admin/organizations/:orgId" element={<AdminOrganizationDetailPage />} />
+            </Route>
           </Route>
           <Route path="/admin/stats" element={<Navigate to="/admin" replace />} />
         </Route>
