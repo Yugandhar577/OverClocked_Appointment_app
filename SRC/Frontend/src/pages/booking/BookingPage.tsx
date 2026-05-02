@@ -337,6 +337,14 @@ export function BookingPage({ share = false }: { share?: boolean }) {
           <CalendarDays size={17} />
           {!auth.user ? "Sign in to confirm" : saving ? "Confirming" : "Confirm booking"}
         </Button>
+        <div className="mt-4 rounded-md border border-line bg-white p-3 text-sm">
+          <div className="font-semibold text-ink">Calendar access</div>
+          <p className="mt-1 text-neutral-600">Connect Google Calendar to check conflicts before you book.</p>
+          <Button type="button" variant="secondary" className="mt-3 w-full" onClick={openGoogleCalendar}>
+            <CalendarDays size={16} />
+            Open Google Calendar
+          </Button>
+        </div>
       </aside>
     </form>
   )

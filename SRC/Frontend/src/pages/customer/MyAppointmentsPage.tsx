@@ -1,19 +1,25 @@
-import { CalendarPlus, RefreshCcw, XCircle } from "lucide-react"
+import { CalendarDays, CalendarPlus, RefreshCcw, XCircle } from "lucide-react"
 import { useEffect, useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, Navigate } from "react-router-dom"
 
+import { googleCalendarConnect } from "../../api/advanced"
 import { cancelBooking, myAppointments } from "../../api/bookings"
 import { errorMessage } from "../../api/client"
 import type { Booking } from "../../api/types"
+import { useAuth } from "../../auth/useAuth"
 import { Button } from "../../components/ui/Button"
 import { Notice } from "../../components/ui/Notice"
 import { StatusBadge } from "../../components/ui/StatusBadge"
 import { formatDateTime } from "../../lib/format"
 
 export function MyAppointmentsPage() {
+  const { hasRole } = useAuth()
   const [status, setStatus] = useState("upcoming")
   const [items, setItems] = useState<Booking[]>([])
   const [error, setError] = useState("")
+
+  const isAdminOnly = hasRole("admin") && !hasRole("customer")
+  const isOrganiserOnly = hasRole("organiser") && !hasRole("customer") && !hasRole("admin")
 
   function load() {
     myAppointments(status)
@@ -33,6 +39,14 @@ export function MyAppointmentsPage() {
       setError(errorMessage(err))
     }
   }
+
+  async function openGoogleCalendar() {
+    const response = await googleCalendarConnect()
+    window.open(response.auth_url, "_blank", "noopener,noreferrer")
+  }
+
+  if (isAdminOnly) return <Navigate to="/admin" replace />
+  if (isOrganiserOnly) return <Navigate to="/organiser/types" replace />
 
   return (
     <div className="grid gap-5">
@@ -56,6 +70,7 @@ export function MyAppointmentsPage() {
               <Th>Status</Th>
               <Th>Code</Th>
               <Th>Actions</Th>
+              <Th>Calendar</Th>
             </tr>
           </thead>
           <tbody>
@@ -85,6 +100,12 @@ export function MyAppointmentsPage() {
                   ) : (
                     <span className="text-xs font-semibold text-neutral-500">Closed</span>
                   )}
+                </Td>
+                <Td>
+                  <Button variant="secondary" onClick={openGoogleCalendar} title="Open in Google Calendar">
+                    <CalendarDays size={16} />
+                    Add
+                  </Button>
                 </Td>
               </tr>
             ))}

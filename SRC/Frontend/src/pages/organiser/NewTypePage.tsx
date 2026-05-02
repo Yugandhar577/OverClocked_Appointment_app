@@ -1,4 +1,4 @@
-import { CalendarDays, Check, Copy, ImagePlus, Link2, MessageSquare, Package, Plus, Send, Trash2, Users, X } from "lucide-react"
+import { CalendarCheck, CalendarDays, Check, Copy, ImagePlus, Link2, MessageSquare, Package, Plus, Send, Trash2, Users, X } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 
@@ -13,6 +13,7 @@ import {
   updateAppointmentType,
   updateRules,
 } from "../../api/appointmentTypes"
+import { googleCalendarConnect } from "../../api/advanced"
 import { errorMessage } from "../../api/client"
 import type { AppointmentTypeDetail } from "../../api/types"
 import { Button } from "../../components/ui/Button"
@@ -270,6 +271,11 @@ export function NewTypePage() {
     }
   }
 
+  async function openGoogleCalendar() {
+    const response = await googleCalendarConnect()
+    window.open(response.auth_url, "_blank", "noopener,noreferrer")
+  }
+
   if (loading) return <Notice>Loading appointment type...</Notice>
 
   return (
@@ -316,7 +322,11 @@ export function NewTypePage() {
         <div className="grid lg:grid-cols-[minmax(0,1fr)_340px]">
           <div className="grid gap-6 p-5">
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.9fr)]">
-              <section className="grid gap-5">
+              <section className="grid gap-5 rounded-md border border-line bg-white p-5 shadow-sm">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-neutral-500">Basics</p>
+                  <h2 className="text-lg font-bold text-ink">Appointment details</h2>
+                </div>
                 <label className="grid gap-2">
                   <span className="text-sm font-bold text-ink">Appointment Title</span>
                   <input
@@ -340,9 +350,15 @@ export function NewTypePage() {
                 </TwoColumn>
               </section>
 
-              <section className="grid content-start gap-4">
-                <div className="ml-auto grid h-28 w-28 place-items-center border border-line bg-white text-neutral-400">
-                  <ImagePlus size={58} />
+              <section className="grid content-start gap-4 rounded-md border border-line bg-white p-5 shadow-sm">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-neutral-500">Assignment</p>
+                    <h2 className="text-lg font-bold text-ink">Staff and resources</h2>
+                  </div>
+                  <div className="grid h-20 w-20 shrink-0 place-items-center rounded-md border border-line bg-paper text-neutral-400">
+                    <ImagePlus size={42} />
+                  </div>
                 </div>
                 <TwoColumn label="Book">
                   <RadioRow value={bookBy} onChange={setBookBy} options={[["user", "Users"], ["resource", "Resources"]]} />
@@ -506,6 +522,21 @@ export function NewTypePage() {
               <Button type="button" variant="secondary">Log note</Button>
               <Button type="button" variant="secondary">Activity</Button>
             </div>
+            <div className="mt-5 rounded-md border border-line bg-white p-4 shadow-sm">
+              <div className="flex items-start gap-3">
+                <span className="grid h-10 w-10 place-items-center rounded-md bg-green-50 text-green-700">
+                  <CalendarCheck size={18} />
+                </span>
+                <div>
+                  <h3 className="font-bold text-ink">Google Calendar</h3>
+                  <p className="mt-1 text-sm text-neutral-600">Open the organiser calendar while configuring availability.</p>
+                </div>
+              </div>
+              <Button type="button" variant="secondary" className="mt-4 w-full" onClick={openGoogleCalendar}>
+                <CalendarDays size={16} />
+                View calendar
+              </Button>
+            </div>
             <div className="my-8 flex items-center gap-3 text-sm text-neutral-500">
               <span className="h-px flex-1 bg-line"></span>
               Today
@@ -566,7 +597,7 @@ function Counter({ icon, label, value }: { icon: React.ReactNode; label: string;
 
 function TwoColumn({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-[160px_minmax(0,1fr)]">
+    <div className="grid gap-3 rounded-md border border-line bg-paper/60 p-3 sm:grid-cols-[150px_minmax(0,1fr)]">
       <strong className="text-sm text-ink">{label}</strong>
       <div className="min-w-0 text-sm text-ink">{children}</div>
     </div>
@@ -575,10 +606,15 @@ function TwoColumn({ label, children }: { label: string; children: React.ReactNo
 
 function RadioRow({ value, onChange, options }: { value: string; onChange: (value: string) => void; options: Array<[string, string]> }) {
   return (
-    <div className="flex flex-wrap gap-4">
+    <div className="flex flex-wrap gap-2">
       {options.map(([optionValue, label]) => (
-        <label key={optionValue} className="inline-flex items-center gap-2">
-          <input type="radio" checked={value === optionValue} onChange={() => onChange(optionValue)} />
+        <label
+          key={optionValue}
+          className={`inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 font-semibold transition ${
+            value === optionValue ? "border-ink bg-ink text-paper" : "border-line bg-white text-ink hover:border-signal"
+          }`}
+        >
+          <input className="sr-only" type="radio" checked={value === optionValue} onChange={() => onChange(optionValue)} />
           {label}
         </label>
       ))}

@@ -19,6 +19,13 @@ function defaultRouteForRoles(roles: string[]) {
   return "/"
 }
 
+function canUseRequestedRoute(roles: string[], route?: string) {
+  if (!route) return false
+  if (roles.includes("admin")) return route.startsWith("/admin")
+  if (roles.includes("organiser")) return route.startsWith("/organiser") || route === "/admin"
+  return !route.startsWith("/admin") && !route.startsWith("/organiser")
+}
+
 export function LoginPage() {
   const [email, setEmail] = useState("cust1@test.local")
   const [password, setPassword] = useState("Customer123!")
@@ -34,8 +41,8 @@ export function LoginPage() {
     setError("")
     try {
       const user = await auth.login(email, password)
-      const from = (location.state as { from?: string } | null)?.from ?? defaultRouteForRoles(user.roles)
-      navigate(from)
+      const requestedRoute = (location.state as { from?: string } | null)?.from
+      navigate(canUseRequestedRoute(user.roles, requestedRoute) ? requestedRoute! : defaultRouteForRoles(user.roles))
     } catch (err) {
       setError(errorMessage(err))
     } finally {

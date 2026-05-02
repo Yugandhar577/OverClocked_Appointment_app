@@ -1,8 +1,9 @@
-import { Building2, CalendarDays, ChevronDown, LayoutDashboard, LogOut, Shield, User, UserCog, Users } from "lucide-react"
+import { BarChart3, Building2, CalendarDays, CalendarPlus, ChevronDown, LayoutDashboard, LogOut, Package, Palette, Shield, User, UserCog, UserRoundCheck, Users } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { Link, NavLink, Outlet } from "react-router-dom"
 
 import { useAuth } from "../../auth/useAuth"
+import { DEFAULT_FEATURE_FLAGS, loadFeatureFlags } from "../../lib/featureFlags"
 import { Button } from "../ui/Button"
 
 export function AppShell() {
@@ -21,6 +22,7 @@ export function AppShell() {
           <nav className="hidden items-center gap-1 md:flex">
             {(!user || isCustomer) && <NavItem to="/">Book</NavItem>}
             {isCustomer && <NavItem to="/me/appointments">My appointments</NavItem>}
+            {isOrganiser && <NavItem to="/admin">Dashboard</NavItem>}
             {isOrganiser && <NavItem to="/organiser/types">Types</NavItem>}
             {isOrganiser && <NavItem to="/organiser/bookings">Bookings</NavItem>}
             {isAdmin && <AdminDropdown />}
@@ -76,7 +78,12 @@ export function AppShell() {
 
 function AdminDropdown() {
   const [open, setOpen] = useState(false)
+  const [flags, setFlags] = useState(DEFAULT_FEATURE_FLAGS)
   const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    loadFeatureFlags().then(setFlags)
+  }, [])
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -88,9 +95,14 @@ function AdminDropdown() {
 
   const items = [
     { to: "/admin", label: "Dashboard", icon: <LayoutDashboard size={15} /> },
+    flags.ENABLE_APPOINTMENT_ANALYTICS && { to: "/admin/analytics", label: "Analytics", icon: <BarChart3 size={15} /> },
+    flags.ENABLE_WAITLIST && { to: "/admin/waitlist", label: "Waitlist", icon: <UserRoundCheck size={15} /> },
+    flags.ENABLE_ADMIN_MANUAL_BOOKING && { to: "/admin/manual-booking", label: "Manual booking", icon: <CalendarPlus size={15} /> },
+    flags.ENABLE_RECURRING_BOOKINGS && { to: "/admin/packages", label: "Packages", icon: <Package size={15} /> },
+    flags.ENABLE_THEME_CUSTOMIZATION && { to: "/admin/theme", label: "Theme", icon: <Palette size={15} /> },
     { to: "/admin/users", label: "Users", icon: <Users size={15} /> },
     { to: "/admin/organizations", label: "Organizations", icon: <Building2 size={15} /> },
-  ]
+  ].filter((item): item is { to: string; label: string; icon: JSX.Element } => Boolean(item))
 
   return (
     <div ref={ref} className="relative">
