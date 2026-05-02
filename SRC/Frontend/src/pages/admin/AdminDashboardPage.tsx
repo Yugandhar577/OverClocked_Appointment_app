@@ -25,6 +25,7 @@ import {
 import { adminStats } from "../../api/admin"
 import { errorMessage } from "../../api/client"
 import { listOrganizations } from "../../api/organizations"
+import { useAuth } from "../../auth/useAuth"
 import { Notice } from "../../components/ui/Notice"
 
 const STATUS_COLORS: Record<string, string> = {
@@ -44,6 +45,8 @@ function timeAgo(iso: string) {
 }
 
 export function AdminDashboardPage() {
+  const { hasRole } = useAuth()
+  const isAdmin = hasRole("admin")
   const [stats, setStats] = useState<Awaited<ReturnType<typeof adminStats>> | null>(null)
   const [totalOrgs, setTotalOrgs] = useState<number | null>(null)
   const [flaggedOrgs, setFlaggedOrgs] = useState<{ name: string; id: string; status: string }[]>([])
@@ -93,34 +96,36 @@ export function AdminDashboardPage() {
 
   return (
     <section className="space-y-4">
-      <div className="flex flex-col gap-3 border-b border-line pb-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex items-center gap-3">
-          <Link to="/admin/users" className="rounded-md bg-[var(--odoo-primary)] px-4 py-2 text-sm font-bold text-white">
-            New
-          </Link>
-          <div>
-            <h1 className="text-2xl font-semibold text-ink">Dashboard</h1>
-            <p className="text-sm text-neutral-600">System overview for users, organizations, and appointments</p>
+      {isAdmin && (
+        <div className="flex flex-col gap-3 border-b border-line pb-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center gap-3">
+            <Link to="/admin/users" className="rounded-md bg-[var(--odoo-primary)] px-4 py-2 text-sm font-bold text-white">
+              New
+            </Link>
+            <div>
+              <h1 className="text-2xl font-semibold text-ink">Dashboard</h1>
+              <p className="text-sm text-neutral-600">System overview for users, organizations, and appointments</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex h-10 min-w-72 items-center gap-2 rounded-md border border-line bg-white px-3">
+              <Search size={17} className="text-neutral-500" />
+              <span className="rounded bg-[var(--odoo-sidebar)] px-2 py-1 text-xs font-semibold text-neutral-700">Admin</span>
+              <input className="min-w-0 flex-1 bg-transparent text-sm outline-none" placeholder="Search..." />
+              <SlidersHorizontal size={16} className="text-neutral-500" />
+            </div>
+            <button className="grid h-10 w-10 place-items-center rounded-md border border-line bg-white text-ink">
+              <BarChart3 size={17} />
+            </button>
+            <button className="grid h-10 w-10 place-items-center rounded-md border border-line bg-white text-ink">
+              <LayoutGrid size={17} />
+            </button>
+            <button className="grid h-10 w-10 place-items-center rounded-md border border-line bg-white text-ink">
+              <List size={17} />
+            </button>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex h-10 min-w-72 items-center gap-2 rounded-md border border-line bg-white px-3">
-            <Search size={17} className="text-neutral-500" />
-            <span className="rounded bg-[var(--odoo-sidebar)] px-2 py-1 text-xs font-semibold text-neutral-700">Admin</span>
-            <input className="min-w-0 flex-1 bg-transparent text-sm outline-none" placeholder="Search..." />
-            <SlidersHorizontal size={16} className="text-neutral-500" />
-          </div>
-          <button className="grid h-10 w-10 place-items-center rounded-md border border-line bg-white text-ink">
-            <BarChart3 size={17} />
-          </button>
-          <button className="grid h-10 w-10 place-items-center rounded-md border border-line bg-white text-ink">
-            <LayoutGrid size={17} />
-          </button>
-          <button className="grid h-10 w-10 place-items-center rounded-md border border-line bg-white text-ink">
-            <List size={17} />
-          </button>
-        </div>
-      </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-2">
         <button
