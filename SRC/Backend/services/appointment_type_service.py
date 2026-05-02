@@ -39,6 +39,18 @@ async def _assert_owner(session: AsyncSession, appointment_type_id: UUID, actor:
     return appointment_type
 
 
+    # Explanation:
+    # `_assert_owner` loads the appointment type and checks whether the actor
+    # owns it or has admin rights. It centralizes authorization before any
+    # mutation logic runs.
+    #
+    # Alternative (commented): move ownership checks into a reusable policy
+    # function so it can be shared across services.
+    #
+    # async def _assert_owner_policy(...):
+    #     pass
+
+
 # Backend note: Creates a new domain record after validation and keeps side effects scoped to this workflow.
 async def create(session: AsyncSession, payload, actor: User) -> AppointmentType:
     async with session.begin():
@@ -62,6 +74,17 @@ async def create(session: AsyncSession, payload, actor: User) -> AppointmentType
         await session.flush()
         session.add(BookingRule(appointment_type_id=appointment_type.id, max_bookings_per_slot=1))
     return appointment_type
+
+
+# Explanation:
+# `create` inserts a new appointment type with default booking-rule values
+# and a generated share token, keeping the mutation inside one transaction.
+#
+# Alternative (commented): derive defaults from a template or preset
+# registry instead of hardcoding rule values in the service.
+#
+# async def create_from_template(...):
+#     pass
 
 
 # Backend note: Collects a filtered collection for API or service consumers while preserving existing response contracts.
@@ -89,6 +112,14 @@ async def list_public(session: AsyncSession, published: bool | None, page: int, 
         }
         for appt_type, organiser_name in rows
     ], total or 0
+
+
+# Explanation:
+# `list_public` returns a paginated public listing of appointment types
+# joined with organiser names, optionally filtering by published state.
+#
+# Alternative (commented): return a denormalized search index response
+# or paginate with cursor tokens for large public catalogs.
 
 
 # Backend note: Reads data and shapes it for the caller without mutating booking state unless noted by the implementation.
@@ -126,12 +157,29 @@ async def get_detail(session: AsyncSession, appointment_type_id: UUID) -> dict:
     }
 
 
+# Explanation:
+# `get_detail` composes the main appointment type row with related
+# resources, questions and working hours so the route can return a
+# complete payload.
+#
+# Alternative (commented): split this into multiple read models or a
+# dedicated query object to reduce eager-loading overhead.
+
+
 # Backend note: Reads data and shapes it for the caller without mutating booking state unless noted by the implementation.
 async def get_by_share_token(session: AsyncSession, share_token: str) -> dict:
     appointment_type = await session.scalar(select(AppointmentType).where(AppointmentType.share_token == share_token))
     if not appointment_type:
         raise NotFoundError("appointment_type")
     return await get_detail(session, appointment_type.id)
+
+
+# Explanation:
+# `get_by_share_token` resolves an appointment type by its share token
+# and then returns the full detail payload.
+#
+# Alternative (commented): use a signed, expiring share token and look it
+# up through a token verifier instead of raw equality on the database.
 
 
 # Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
@@ -161,6 +209,14 @@ async def add_resource(session: AsyncSession, appointment_type_id: UUID, payload
     return resource
 
 
+# Explanation:
+# `add_resource` creates a resource and links it to the appointment type
+# in one transaction, after owner validation.
+#
+# Alternative (commented): allow reusing an existing resource id rather
+# than creating a new resource row on every call.
+
+
 # Backend note: Updates an existing domain record in place while preserving unrelated data.
 async def update_details(session: AsyncSession, appointment_type_id: UUID, payload, actor: User) -> AppointmentType:
     async with session.begin():
@@ -175,6 +231,14 @@ async def update_details(session: AsyncSession, appointment_type_id: UUID, paylo
         appointment_type.venue = payload.venue
         appointment_type.confirmation_msg = payload.confirmation_msg
     return appointment_type
+
+
+# Explanation:
+# `update_details` applies editable appointment type fields inside a
+# transaction after ownership validation.
+#
+# Alternative (commented): use a field whitelist diff function so only
+# changed fields are applied and audited.
 
 
 # Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
@@ -204,6 +268,14 @@ async def replace_resources(session: AsyncSession, appointment_type_id: UUID, pa
     return resources
 
 
+        # Explanation:
+        # `replace_resources` clears the current resource links and rebuilds the
+        # set from the supplied payload, returning the new resources.
+        #
+        # Alternative (commented): compute a delta and only add/remove changed
+        # resources to reduce churn in audit logs.
+
+
 # Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 async def replace_working_hours(session: AsyncSession, appointment_type_id: UUID, payload: list, actor: User) -> int:
     async with session.begin():
@@ -227,6 +299,14 @@ async def replace_working_hours(session: AsyncSession, appointment_type_id: UUID
     return len(payload)
 
 
+        # Explanation:
+        # `replace_working_hours` replaces all stored working hours for the type
+        # and returns the count of newly inserted rows.
+        #
+        # Alternative (commented): normalize weekly schedules in a dedicated
+        # timetable table with recurrence rules instead of raw rows.
+
+
 # Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 async def replace_questions(session: AsyncSession, appointment_type_id: UUID, payload: list, actor: User) -> int:
     async with session.begin():
@@ -248,6 +328,14 @@ async def replace_questions(session: AsyncSession, appointment_type_id: UUID, pa
                 )
             )
     return len(payload)
+
+
+        # Explanation:
+        # `replace_questions` deletes existing questions and recreates them from
+        # the payload, preserving display order based on enumeration.
+        #
+        # Alternative (commented): preserve question ids across edits and update
+        # rows in place to maintain stable references in analytics or reports.
 
 
 # Backend note: Updates an existing domain record in place while preserving unrelated data.
@@ -276,6 +364,14 @@ async def update_rules(session: AsyncSession, appointment_type_id: UUID, payload
     return appointment_type
 
 
+    # Explanation:
+    # `update_rules` changes booking policy fields on the appointment type
+    # and keeps the `BookingRule` row synchronized with the max-per-slot value.
+    #
+    # Alternative (commented): break rules into distinct policy objects for
+    # capacity, payment and timing so they can evolve independently.
+
+
 # Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 async def publish(session: AsyncSession, appointment_type_id: UUID, actor: User) -> tuple[AppointmentType, int]:
     async with session.begin():
@@ -289,6 +385,14 @@ async def publish(session: AsyncSession, appointment_type_id: UUID, actor: User)
     slots_generated = await slot_generation_service.regenerate(session, appointment_type_id)
     appointment_type = await session.get(AppointmentType, appointment_type_id)
     return appointment_type, slots_generated
+
+
+# Explanation:
+# `publish` sets the appointment type live, ensures schedule/config rows
+# exist, and regenerates slots after the transaction completes.
+#
+# Alternative (commented): queue slot generation as a background job so
+# publish returns immediately for large schedules.
 
 
 # Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
@@ -312,6 +416,22 @@ async def unpublish(session: AsyncSession, appointment_type_id: UUID, actor: Use
     return appointment_type
 
 
+# Explanation:
+# `unpublish` disables public availability and blocks empty future slots
+# to prevent new bookings while keeping existing ones intact.
+#
+# Alternative (commented): archive the appointment type instead of simply
+# flipping the published flag, if you need stronger lifecycle separation.
+
+
 # Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 def share_link(share_token: str) -> str:
     return f"{get_settings().app_base_url}/book/share/{share_token}"
+
+
+# Explanation:
+# `share_link` builds the externally shareable booking URL from the app
+# base URL and the appointment type's share token.
+#
+# Alternative (commented): generate a fully signed URL with expiry or a
+# short alias slug instead of exposing the raw token path.

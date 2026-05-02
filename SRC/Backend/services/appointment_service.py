@@ -58,3 +58,16 @@ async def transition(
         )
     )
     return appointment
+
+
+# Explanation:
+# `transition` validates an appointment status change against the allowed
+# transition map, applies timestamps for confirmed/cancelled states, and
+# records an audit log entry for traceability.
+#
+# Alternative (commented): encode transitions as state-machine methods on
+# the model or use a workflow library for richer lifecycle management.
+#
+# def transition_state_machine(appointment, target_status, actor, reason=None):
+#     # consult state machine and apply transition
+#     pass

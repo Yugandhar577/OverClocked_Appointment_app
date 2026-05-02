@@ -52,9 +52,28 @@ async def _config_rows(session: AsyncSession, appointment_type_id: UUID):
     return appointment_type, list(resources), list(hours)
 
 
+# Explanation:
+# `_config_rows` loads the appointment type plus its active resources and
+# working hours, then validates that the publication prerequisites exist.
+#
+# Alternative (commented): return a structured config object instead of a
+# tuple so the call sites can access named fields more safely.
+#
+# async def _config_rows_structured(...):
+#     pass
+
+
 # Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 async def validate_publishable(session: AsyncSession, appointment_type_id: UUID) -> None:
     await _config_rows(session, appointment_type_id)
+
+
+# Explanation:
+# `validate_publishable` is a narrow guard that reuses `_config_rows` to
+# confirm the appointment type has enough configuration to publish.
+#
+# Alternative (commented): return the missing config items so callers can
+# present a richer validation message to the user.
 
 
 # Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
@@ -110,3 +129,12 @@ async def regenerate(session: AsyncSession, appointment_type_id: UUID) -> int:
                         )
                         inserted += 1
         return inserted
+
+
+# Explanation:
+# `regenerate` builds generated slots from working hours across the future
+# date window, skipping past times and existing slots, then inserts new
+# records for each open time block.
+#
+# Alternative (commented): replace eager generation with on-demand slot
+# creation and a cache, which can reduce writes for sparse calendars.
