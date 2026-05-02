@@ -1,3 +1,11 @@
+"""
+Backend documentation for `services/advanced_service.py`.
+
+This service module owns business rules and database coordination so route handlers and UI code stay simple.
+Comments in this file are intentionally explicit because the project is used in a hackathon-style handoff.
+Keep behavior changes separate from documentation-only edits so reviews can verify no runtime contract changed.
+"""
+
 from decimal import Decimal
 from uuid import UUID
 
@@ -42,6 +50,7 @@ DEFAULT_THEME = {
 }
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 def feature_flags() -> dict[str, bool]:
     settings = get_settings()
     return {
@@ -60,6 +69,7 @@ def feature_flags() -> dict[str, bool]:
     }
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 async def join_waitlist(session: AsyncSession, *, appointment_type_id: UUID, slot_id: UUID | None, customer: User, notes: str | None) -> WaitlistEntry:
     async with session.begin():
         entry = WaitlistEntry(
@@ -73,11 +83,13 @@ async def join_waitlist(session: AsyncSession, *, appointment_type_id: UUID, slo
         return entry
 
 
+# Backend note: Collects a filtered collection for API or service consumers while preserving existing response contracts.
 async def list_waitlist(session: AsyncSession) -> list[WaitlistEntry]:
     result = await session.execute(select(WaitlistEntry).order_by(WaitlistEntry.created_at.desc()).limit(200))
     return list(result.scalars().all())
 
 
+# Backend note: Creates a new domain record after validation and keeps side effects scoped to this workflow.
 async def create_cart_quote(session: AsyncSession, *, items: list[dict], customer: User | None, currency: str) -> BookingCartQuote:
     total_duration = sum(int(item["duration_minutes"]) for item in items)
     prices = [Decimal(str(item["price"])) for item in items if item.get("price") is not None]
@@ -95,6 +107,7 @@ async def create_cart_quote(session: AsyncSession, *, items: list[dict], custome
         return quote
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 async def estimate_price(
     session: AsyncSession,
     *,
@@ -126,6 +139,7 @@ async def estimate_price(
     return {"base_price": base, "total_price": total, "currency": appointment_type.currency if appointment_type else "INR", "breakdown": breakdown}
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 async def active_theme(session: AsyncSession) -> dict:
     result = await session.execute(select(ThemeSettings).where(ThemeSettings.is_active.is_(True)).order_by(ThemeSettings.updated_at.desc()).limit(1))
     theme = result.scalar_one_or_none()
@@ -134,6 +148,7 @@ async def active_theme(session: AsyncSession) -> dict:
     return {"id": theme.id, "name": theme.name, "settings": {**DEFAULT_THEME, **theme.settings}, "is_default": False}
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 async def save_theme(session: AsyncSession, *, name: str, settings: dict) -> ThemeSettings:
     async with session.begin():
         existing = await session.scalar(select(ThemeSettings).where(ThemeSettings.organization_id.is_(None), ThemeSettings.name == name))
@@ -148,6 +163,7 @@ async def save_theme(session: AsyncSession, *, name: str, settings: dict) -> The
         return theme
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 async def reset_theme(session: AsyncSession) -> dict:
     async with session.begin():
         result = await session.execute(select(ThemeSettings).where(ThemeSettings.is_active.is_(True)))
@@ -156,6 +172,7 @@ async def reset_theme(session: AsyncSession) -> dict:
     return {"id": None, "name": "Odoo Default", "settings": DEFAULT_THEME, "is_default": True}
 
 
+# Backend note: Creates a new domain record after validation and keeps side effects scoped to this workflow.
 async def create_package(session: AsyncSession, payload) -> Package:
     async with session.begin():
         package = Package(**payload.model_dump())
@@ -164,11 +181,13 @@ async def create_package(session: AsyncSession, payload) -> Package:
         return package
 
 
+# Backend note: Collects a filtered collection for API or service consumers while preserving existing response contracts.
 async def list_packages(session: AsyncSession) -> list[Package]:
     result = await session.execute(select(Package).order_by(Package.created_at.desc()))
     return list(result.scalars().all())
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 async def analytics(session: AsyncSession) -> dict:
     total = await session.scalar(select(func.count()).select_from(Appointment))
     completed = await session.scalar(select(func.count()).select_from(Appointment).where(Appointment.status == "completed"))

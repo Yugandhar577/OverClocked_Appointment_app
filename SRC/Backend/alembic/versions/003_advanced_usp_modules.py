@@ -14,10 +14,12 @@ branch_labels = None
 depends_on = None
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 def _has_table(insp: sa.Inspector, name: str) -> bool:
     return insp.has_table(name)
 
 
+# Backend note: Applies forward-only database schema changes for this migration revision.
 def upgrade() -> None:
     bind = op.get_bind()
     insp = sa.inspect(bind)
@@ -152,6 +154,7 @@ def upgrade() -> None:
         )
 
 
+# Backend note: Reverses this migration revision when Alembic is asked to step backward.
 def downgrade() -> None:
     bind = op.get_bind()
     insp = sa.inspect(bind)

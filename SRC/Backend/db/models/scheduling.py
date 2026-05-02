@@ -1,3 +1,11 @@
+"""
+Backend documentation for `db/models/scheduling.py`.
+
+This model module declares database persistence structures and relationships used by SQLAlchemy.
+Comments in this file are intentionally explicit because the project is used in a hackathon-style handoff.
+Keep behavior changes separate from documentation-only edits so reviews can verify no runtime contract changed.
+"""
+
 import uuid
 from datetime import datetime, time
 from decimal import Decimal
@@ -22,6 +30,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from SRC.Backend.db.base import Base
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class AppointmentType(Base):
     __tablename__ = "appointment_types"
 
@@ -66,6 +75,7 @@ class AppointmentType(Base):
     )
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class Resource(Base):
     __tablename__ = "resources"
 
@@ -82,6 +92,7 @@ class Resource(Base):
     __table_args__ = (CheckConstraint("capacity > 0", name="ck_resources_capacity_positive"),)
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class AppointmentTypeResource(Base):
     __tablename__ = "appointment_type_resources"
 
@@ -98,6 +109,7 @@ class AppointmentTypeResource(Base):
     priority: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class BookingRule(Base):
     __tablename__ = "booking_rules"
 
@@ -116,6 +128,7 @@ class BookingRule(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class AppointmentQuestion(Base):
     __tablename__ = "appointment_questions"
 
@@ -133,6 +146,7 @@ class AppointmentQuestion(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class WorkingHour(Base):
     __tablename__ = "working_hours"
 
@@ -154,6 +168,7 @@ class WorkingHour(Base):
     )
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class FlexibleSlot(Base):
     __tablename__ = "flexible_slots"
 
@@ -175,6 +190,7 @@ class FlexibleSlot(Base):
     )
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class GeneratedSlot(Base):
     __tablename__ = "generated_slots"
 

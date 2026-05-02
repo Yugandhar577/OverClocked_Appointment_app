@@ -1,3 +1,11 @@
+"""
+Backend documentation for `db/models/advanced.py`.
+
+This model module declares database persistence structures and relationships used by SQLAlchemy.
+Comments in this file are intentionally explicit because the project is used in a hackathon-style handoff.
+Keep behavior changes separate from documentation-only edits so reviews can verify no runtime contract changed.
+"""
+
 import uuid
 from datetime import datetime
 from decimal import Decimal
@@ -9,6 +17,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from SRC.Backend.db.base import Base
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class FeatureFlagOverride(Base):
     __tablename__ = "feature_flag_overrides"
 
@@ -19,6 +28,7 @@ class FeatureFlagOverride(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class WaitlistEntry(Base):
     __tablename__ = "waitlist_entries"
 
@@ -38,6 +48,7 @@ class WaitlistEntry(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class BookingCartQuote(Base):
     __tablename__ = "booking_cart_quotes"
 
@@ -51,6 +62,7 @@ class BookingCartQuote(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class RecurringSeries(Base):
     __tablename__ = "recurring_series"
 
@@ -63,6 +75,7 @@ class RecurringSeries(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class Package(Base):
     __tablename__ = "packages"
 
@@ -76,6 +89,7 @@ class Package(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class CustomerPackageBalance(Base):
     __tablename__ = "customer_package_balances"
 
@@ -86,6 +100,7 @@ class CustomerPackageBalance(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class CancellationPolicy(Base):
     __tablename__ = "cancellation_policies"
 
@@ -99,6 +114,7 @@ class CancellationPolicy(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class PricingRule(Base):
     __tablename__ = "pricing_rules"
 
@@ -114,6 +130,7 @@ class PricingRule(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class ThemeSettings(Base):
     __tablename__ = "theme_settings"
 

@@ -1,3 +1,11 @@
+"""
+Backend documentation for `services/appointment_type_service.py`.
+
+This service module owns business rules and database coordination so route handlers and UI code stay simple.
+Comments in this file are intentionally explicit because the project is used in a hackathon-style handoff.
+Keep behavior changes separate from documentation-only edits so reviews can verify no runtime contract changed.
+"""
+
 import uuid
 from uuid import UUID
 
@@ -19,6 +27,7 @@ from SRC.Backend.db.models import (
 from SRC.Backend.services import slot_generation_service
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 async def _assert_owner(session: AsyncSession, appointment_type_id: UUID, actor: User) -> AppointmentType:
     appointment_type = await session.get(AppointmentType, appointment_type_id)
     if not appointment_type:
@@ -30,6 +39,7 @@ async def _assert_owner(session: AsyncSession, appointment_type_id: UUID, actor:
     return appointment_type
 
 
+# Backend note: Creates a new domain record after validation and keeps side effects scoped to this workflow.
 async def create(session: AsyncSession, payload, actor: User) -> AppointmentType:
     async with session.begin():
         appointment_type = AppointmentType(
@@ -54,6 +64,7 @@ async def create(session: AsyncSession, payload, actor: User) -> AppointmentType
     return appointment_type
 
 
+# Backend note: Collects a filtered collection for API or service consumers while preserving existing response contracts.
 async def list_public(session: AsyncSession, published: bool | None, page: int, page_size: int) -> tuple[list[dict], int]:
     stmt = (
         select(AppointmentType, User.full_name.label("organiser_name"))
@@ -80,6 +91,7 @@ async def list_public(session: AsyncSession, published: bool | None, page: int, 
     ], total or 0
 
 
+# Backend note: Reads data and shapes it for the caller without mutating booking state unless noted by the implementation.
 async def get_detail(session: AsyncSession, appointment_type_id: UUID) -> dict:
     appointment_type = await session.get(AppointmentType, appointment_type_id)
     if not appointment_type:
@@ -114,6 +126,7 @@ async def get_detail(session: AsyncSession, appointment_type_id: UUID) -> dict:
     }
 
 
+# Backend note: Reads data and shapes it for the caller without mutating booking state unless noted by the implementation.
 async def get_by_share_token(session: AsyncSession, share_token: str) -> dict:
     appointment_type = await session.scalar(select(AppointmentType).where(AppointmentType.share_token == share_token))
     if not appointment_type:
@@ -121,6 +134,7 @@ async def get_by_share_token(session: AsyncSession, share_token: str) -> dict:
     return await get_detail(session, appointment_type.id)
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 async def add_resource(session: AsyncSession, appointment_type_id: UUID, payload, actor: User) -> Resource:
     async with session.begin():
         appointment_type = await session.get(AppointmentType, appointment_type_id)
@@ -147,6 +161,7 @@ async def add_resource(session: AsyncSession, appointment_type_id: UUID, payload
     return resource
 
 
+# Backend note: Updates an existing domain record in place while preserving unrelated data.
 async def update_details(session: AsyncSession, appointment_type_id: UUID, payload, actor: User) -> AppointmentType:
     async with session.begin():
         appointment_type = await _assert_owner(session, appointment_type_id, actor)
@@ -162,6 +177,7 @@ async def update_details(session: AsyncSession, appointment_type_id: UUID, paylo
     return appointment_type
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 async def replace_resources(session: AsyncSession, appointment_type_id: UUID, payload: list, actor: User) -> list[Resource]:
     async with session.begin():
         appointment_type = await _assert_owner(session, appointment_type_id, actor)
@@ -188,6 +204,7 @@ async def replace_resources(session: AsyncSession, appointment_type_id: UUID, pa
     return resources
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 async def replace_working_hours(session: AsyncSession, appointment_type_id: UUID, payload: list, actor: User) -> int:
     async with session.begin():
         appointment_type = await session.get(AppointmentType, appointment_type_id)
@@ -210,6 +227,7 @@ async def replace_working_hours(session: AsyncSession, appointment_type_id: UUID
     return len(payload)
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 async def replace_questions(session: AsyncSession, appointment_type_id: UUID, payload: list, actor: User) -> int:
     async with session.begin():
         appointment_type = await session.get(AppointmentType, appointment_type_id)
@@ -232,6 +250,7 @@ async def replace_questions(session: AsyncSession, appointment_type_id: UUID, pa
     return len(payload)
 
 
+# Backend note: Updates an existing domain record in place while preserving unrelated data.
 async def update_rules(session: AsyncSession, appointment_type_id: UUID, payload, actor: User) -> AppointmentType:
     async with session.begin():
         appointment_type = await session.get(AppointmentType, appointment_type_id)
@@ -257,6 +276,7 @@ async def update_rules(session: AsyncSession, appointment_type_id: UUID, payload
     return appointment_type
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 async def publish(session: AsyncSession, appointment_type_id: UUID, actor: User) -> tuple[AppointmentType, int]:
     async with session.begin():
         appointment_type = await session.get(AppointmentType, appointment_type_id)
@@ -271,6 +291,7 @@ async def publish(session: AsyncSession, appointment_type_id: UUID, actor: User)
     return appointment_type, slots_generated
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 async def unpublish(session: AsyncSession, appointment_type_id: UUID, actor: User) -> AppointmentType:
     async with session.begin():
         appointment_type = await session.get(AppointmentType, appointment_type_id)
@@ -291,5 +312,6 @@ async def unpublish(session: AsyncSession, appointment_type_id: UUID, actor: Use
     return appointment_type
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 def share_link(share_token: str) -> str:
     return f"{get_settings().app_base_url}/book/share/{share_token}"

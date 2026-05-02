@@ -1,3 +1,11 @@
+"""
+Backend documentation for `services/slot_generation_service.py`.
+
+This service module owns business rules and database coordination so route handlers and UI code stay simple.
+Comments in this file are intentionally explicit because the project is used in a hackathon-style handoff.
+Keep behavior changes separate from documentation-only edits so reviews can verify no runtime contract changed.
+"""
+
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from uuid import UUID
@@ -10,6 +18,7 @@ from SRC.Backend.core.time import utcnow
 from SRC.Backend.db.models import AppointmentType, AppointmentTypeResource, GeneratedSlot, Resource, WorkingHour
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 async def _config_rows(session: AsyncSession, appointment_type_id: UUID):
     appointment_type = await session.get(AppointmentType, appointment_type_id)
     if not appointment_type:
@@ -43,10 +52,12 @@ async def _config_rows(session: AsyncSession, appointment_type_id: UUID):
     return appointment_type, list(resources), list(hours)
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 async def validate_publishable(session: AsyncSession, appointment_type_id: UUID) -> None:
     await _config_rows(session, appointment_type_id)
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 async def regenerate(session: AsyncSession, appointment_type_id: UUID) -> int:
     async with session.begin():
         appointment_type, resources, hours = await _config_rows(session, appointment_type_id)

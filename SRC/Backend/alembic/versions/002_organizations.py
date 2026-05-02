@@ -14,6 +14,7 @@ branch_labels = None
 depends_on = None
 
 
+# Backend note: Applies forward-only database schema changes for this migration revision.
 def upgrade() -> None:
     bind = op.get_bind()
     insp = sa.inspect(bind)
@@ -42,6 +43,7 @@ def upgrade() -> None:
         )
 
 
+# Backend note: Reverses this migration revision when Alembic is asked to step backward.
 def downgrade() -> None:
     bind = op.get_bind()
     insp = sa.inspect(bind)

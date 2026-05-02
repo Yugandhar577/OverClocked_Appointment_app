@@ -1,9 +1,18 @@
+"""
+Backend documentation for `schemas/bookings.py`.
+
+This schema module defines request/response contracts used by FastAPI and the frontend TypeScript client.
+Comments in this file are intentionally explicit because the project is used in a hackathon-style handoff.
+Keep behavior changes separate from documentation-only edits so reviews can verify no runtime contract changed.
+"""
+
 from datetime import date, datetime
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class AvailabilitySlot(BaseModel):
     slot_id: UUID
     start_datetime: datetime
@@ -15,17 +24,20 @@ class AvailabilitySlot(BaseModel):
     is_waitlist_reserved: bool = False
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class IntakeAnswerIn(BaseModel):
     question_id: UUID
     value: str | int | bool | list[str] | dict
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class CustomerInfoIn(BaseModel):
     full_name: str | None = None
     email: str | None = None
     phone: str | None = None
 
 
+# Backend note: Input contract used when creating a backend resource.
 class BookingCreate(BaseModel):
     appointment_type_id: UUID
     slot_id: UUID
@@ -35,6 +47,7 @@ class BookingCreate(BaseModel):
     customer_info: CustomerInfoIn | None = None
 
 
+# Backend note: Input contract used when creating a backend resource.
 class BookingCreateResponse(BaseModel):
     booking_id: UUID
     status: str
@@ -47,6 +60,7 @@ class BookingCreateResponse(BaseModel):
     payment_url: str | None = None
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class BookingOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -66,19 +80,23 @@ class BookingOut(BaseModel):
     venue: str | None = None
 
 
+# Backend note: API request contract accepted from the frontend.
 class CancelRequest(BaseModel):
     reason: str | None = None
 
 
+# Backend note: API request contract accepted from the frontend.
 class RescheduleRequest(BaseModel):
     new_slot_id: UUID
 
 
+# Backend note: API response contract sent back to the frontend.
 class RescheduleResponse(BaseModel):
     old_id: UUID
     new_id: UUID
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class AvailabilityQuery(BaseModel):
     appointment_type_id: UUID
     resource_id: UUID | None = None

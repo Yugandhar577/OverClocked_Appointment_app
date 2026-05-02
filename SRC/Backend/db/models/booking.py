@@ -1,3 +1,11 @@
+"""
+Backend documentation for `db/models/booking.py`.
+
+This model module declares database persistence structures and relationships used by SQLAlchemy.
+Comments in this file are intentionally explicit because the project is used in a hackathon-style handoff.
+Keep behavior changes separate from documentation-only edits so reviews can verify no runtime contract changed.
+"""
+
 import uuid
 from datetime import datetime
 
@@ -8,6 +16,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from SRC.Backend.db.base import Base
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class Appointment(Base):
     __tablename__ = "appointments"
 
@@ -44,6 +53,7 @@ class Appointment(Base):
     )
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class AppointmentAnswer(Base):
     __tablename__ = "appointment_answers"
 
@@ -55,6 +65,7 @@ class AppointmentAnswer(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class SlotCapacityLog(Base):
     __tablename__ = "slot_capacity_log"
 

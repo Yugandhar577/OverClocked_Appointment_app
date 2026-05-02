@@ -1,6 +1,15 @@
+"""
+Backend documentation for `services/recurring_service.py`.
+
+This service module owns business rules and database coordination so route handlers and UI code stay simple.
+Comments in this file are intentionally explicit because the project is used in a hackathon-style handoff.
+Keep behavior changes separate from documentation-only edits so reviews can verify no runtime contract changed.
+"""
+
 from datetime import date, timedelta
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 def expand_recurrence(start: date, recurrence_type: str, occurrences: int, interval: int = 1) -> list[date]:
     if occurrences <= 0:
         return []

@@ -1,3 +1,11 @@
+"""
+Backend documentation for `db/models/__init__.py`.
+
+This model module declares database persistence structures and relationships used by SQLAlchemy.
+Comments in this file are intentionally explicit because the project is used in a hackathon-style handoff.
+Keep behavior changes separate from documentation-only edits so reviews can verify no runtime contract changed.
+"""
+
 from SRC.Backend.db.base import Base
 from SRC.Backend.db.models.auth import OtpVerification, Role, User, user_roles
 from SRC.Backend.db.models.organization import Organization
