@@ -6,7 +6,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom"
 import { googleLogin } from "../../api/auth"
 import { errorMessage } from "../../api/client"
 import { useAuth } from "../../auth/useAuth"
-import { defaultRouteForRoles } from "../../lib/postLoginRedirect"
+import { canUseRequestedRoute, defaultRouteForRoles } from "../../lib/postLoginRedirect"
 import { loginSchema, type LoginFormData } from "../../lib/validation"
 import { Button } from "../../components/ui/Button"
 import { Field, Input } from "../../components/ui/Field"
@@ -37,9 +37,10 @@ export function LoginPage() {
   })
 
   const currentEmail = watch("email")
+  const requestedRoute = (location.state as { from?: string } | null)?.from
 
   function getRedirect(roles: string[]) {
-    return (location.state as { from?: string } | null)?.from ?? defaultRouteForRoles(roles)
+    return canUseRequestedRoute(roles, requestedRoute) ? requestedRoute! : defaultRouteForRoles(roles)
   }
 
   async function submit(data: LoginFormData) {

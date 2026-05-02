@@ -14,20 +14,13 @@ export function AuthShell() {
           </div>
           <div className="mt-10">
             <p className="text-xs font-bold uppercase tracking-[0.25em] text-neutral-500">Odoo style scheduling</p>
-            <h2 className="mt-3 text-4xl font-black leading-tight text-ink">Manage bookings, staff, waitlists, and follow-ups from one desk.</h2>
+            <h2 className="mt-3 text-4xl font-black leading-tight text-ink">Manage appointments from one calm workspace.</h2>
             <p className="mt-4 text-base leading-7 text-neutral-700">
-              A clean appointment console for customers, organisers, and admins with role-aware navigation and calendar-ready workflows.
+              Sign in as a customer, organiser, or admin and continue with the right tools for your role.
             </p>
           </div>
-          <div className="mt-10 grid grid-cols-2 gap-3">
-            <div className="rounded-lg border border-line bg-white p-4">
-              <div className="text-3xl font-black text-[var(--odoo-primary)]">24h</div>
-              <div className="text-sm text-neutral-600">Hackathon-ready operations</div>
-            </div>
-            <div className="rounded-lg border border-line bg-white p-4">
-              <div className="text-3xl font-black text-[var(--odoo-secondary)]">11</div>
-              <div className="text-sm text-neutral-600">Smart appointment modules</div>
-            </div>
+          <div className="mt-10 rounded-lg border border-line bg-white/70 p-5 text-sm leading-7 text-neutral-700">
+            Role-aware navigation keeps booking, organiser setup, and admin controls separated.
           </div>
         </section>
         <section className="p-6 md:p-8">
