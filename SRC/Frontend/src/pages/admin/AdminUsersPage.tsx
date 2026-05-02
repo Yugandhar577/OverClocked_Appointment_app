@@ -29,7 +29,7 @@ const ROLE_OPTIONS = ["customer", "organiser", "admin"] as const
 const ROLE_STYLE: Record<string, string> = {
   customer: "bg-blue-50 text-blue-800",
   organiser: "bg-emerald-50 text-emerald-800",
-  admin: "bg-ink text-paper",
+  admin: "bg-odoo-primary text-paper",
 }
 
 function initials(name: string) {
@@ -222,7 +222,7 @@ export function AdminUsersPage() {
           </div>
         </Field>
         {hasFilters && (
-          <button onClick={clearFilters} className="flex h-10 items-center gap-1.5 rounded-md border border-line px-3 text-sm font-semibold text-neutral-600 hover:border-ink hover:text-ink">
+          <button onClick={clearFilters} className="flex h-10 items-center gap-1.5 rounded-md border border-line px-3 text-sm font-semibold text-neutral-600 hover:border-odoo-primary hover:text-ink">
             <X size={14} /> Clear
           </button>
         )}
@@ -322,7 +322,7 @@ export function AdminUsersPage() {
 
       {/* role modal */}
       {roleModalUser && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 p-4 sm:items-center" role="dialog">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-odoo-primary/40 p-4 sm:items-center" role="dialog">
           <div className="max-h-[90vh] w-full max-w-md overflow-auto rounded-2xl border border-line bg-paper p-6 shadow-panel">
             <div className="flex items-center gap-3">
               <div className="grid h-10 w-10 place-items-center rounded-full text-sm font-bold text-paper" style={{ backgroundColor: avatarColor(roleModalUser.full_name) }}>
@@ -336,7 +336,7 @@ export function AdminUsersPage() {
             <p className="mt-4 text-sm text-neutral-600">Assign roles. At least one is required. Changes apply immediately.</p>
             <div className="mt-4 grid gap-2">
               {ROLE_OPTIONS.map((r) => (
-                <label key={r} className={["flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition", draftRoles.has(r) ? "border-ink bg-ink text-paper" : "border-line bg-white text-ink hover:border-neutral-400"].join(" ")}>
+                <label key={r} className={["flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition", draftRoles.has(r) ? "border-odoo-primary bg-odoo-primary text-paper" : "border-line bg-white text-ink hover:border-neutral-400"].join(" ")}>
                   <input type="checkbox" className="sr-only" checked={draftRoles.has(r)} onChange={() => {
                     setDraftRoles((prev) => { const next = new Set(prev); next.has(r) ? next.delete(r) : next.add(r); return next })
                   }} />
@@ -390,7 +390,7 @@ function UserRowActions({ user, onToggle, onEditRoles, onAddOrganiser }: {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex h-8 w-8 items-center justify-center rounded-lg border border-line text-neutral-500 transition hover:border-ink hover:text-ink"
+        className="flex h-8 w-8 items-center justify-center rounded-lg border border-line text-neutral-500 transition hover:border-odoo-primary hover:text-ink"
       >
         <MoreHorizontal size={16} />
       </button>

@@ -66,7 +66,7 @@ export function LandingLoginModal({ open, onDismiss }: LandingLoginModalProps) {
       <button
         type="button"
         aria-label="Continue without signing in"
-        className="absolute inset-0 bg-ink/50 backdrop-blur-[2px]"
+        className="absolute inset-0 bg-odoo-primary/50 backdrop-blur-[2px]"
         onClick={skip}
       />
       <div
@@ -96,7 +96,7 @@ export function LandingLoginModal({ open, onDismiss }: LandingLoginModalProps) {
                 setPassword(CUSTOMER_PASSWORD)
                 setError("")
               }}
-              className="focus-ring mt-2 rounded-md border border-line bg-white px-3 py-2 text-xs font-bold text-ink hover:border-ink"
+              className="focus-ring mt-2 rounded-md border border-line bg-white px-3 py-2 text-xs font-bold text-ink hover:border-odoo-primary"
             >
               Customer
             </button>

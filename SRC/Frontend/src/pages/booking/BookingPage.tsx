@@ -217,7 +217,7 @@ export function BookingPage({ share = false }: { share?: boolean }) {
   function slotClass(slot: AvailabilitySlot, selected: boolean) {
     const waitlistSlot = waitlistEnabled && (slot.status === "waitlist" || slot.is_waitlist_reserved || slot.remaining_capacity <= 0)
     if (selected && waitlistSlot) return "border-amber-700 bg-amber-100 text-amber-950 shadow-sm"
-    if (selected) return "border-ink bg-ink text-paper shadow-sm"
+    if (selected) return "border-odoo-primary bg-odoo-primary text-paper shadow-sm"
     if (waitlistSlot) return "border-amber-300 bg-amber-50 text-amber-950 hover:border-amber-600"
     if (slot.status === "full" || slot.remaining_capacity <= 0) return "border-red-200 bg-red-50 text-red-800"
     return "border-green-200 bg-green-50 text-green-900 hover:border-green-500"

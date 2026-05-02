@@ -797,7 +797,7 @@ export function NewTypePage() {
             <div className="grid gap-4">
               {activityItems.length === 0 && (
                 <div className="flex gap-3">
-                  <span className="grid h-10 w-10 place-items-center rounded-md bg-ink text-paper">P</span>
+                  <span className="grid h-10 w-10 place-items-center rounded-md bg-odoo-primary text-paper">P</span>
                   <p className="text-sm">
                     <strong>Organiser</strong> <span className="text-neutral-500">now</span>
                     <br />
@@ -807,7 +807,7 @@ export function NewTypePage() {
               )}
               {activityItems.map((item) => (
                 <div key={item.id} className="flex gap-3">
-                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-ink text-paper">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-odoo-primary text-paper">
                     {(item.actor_name || "O").slice(0, 1)}
                   </span>
                   <p className="text-sm">
@@ -926,7 +926,7 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
     <button
       type="button"
       onClick={onClick}
-      className={`border border-line px-5 py-3 text-sm font-semibold ${active ? "border-t-4 border-t-ink bg-white text-ink" : "bg-paper text-ink"}`}
+      className={`border border-line px-5 py-3 text-sm font-semibold ${active ? "border-t-4 border-t-odoo-primary bg-white text-ink" : "bg-paper text-ink"}`}
     >
       {children}
     </button>

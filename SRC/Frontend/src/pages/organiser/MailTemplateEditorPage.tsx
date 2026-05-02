@@ -120,10 +120,10 @@ export function MailTemplateEditorPage() {
 
         <div className="border-t border-line">
           <div className="flex">
-            <button type="button" onClick={() => setActiveTab("body")} className={`border-r border-line px-4 py-3 text-sm font-bold ${activeTab === "body" ? "border-t-4 border-t-ink bg-white" : "bg-paper text-neutral-700"}`}>
+            <button type="button" onClick={() => setActiveTab("body")} className={`border-r border-line px-4 py-3 text-sm font-bold ${activeTab === "body" ? "border-t-4 border-t-odoo-primary bg-white" : "bg-paper text-neutral-700"}`}>
               Body
             </button>
-            <button type="button" onClick={() => setActiveTab("options")} className={`border-r border-line px-4 py-3 text-sm font-bold ${activeTab === "options" ? "border-t-4 border-t-ink bg-white" : "bg-paper text-neutral-700"}`}>
+            <button type="button" onClick={() => setActiveTab("options")} className={`border-r border-line px-4 py-3 text-sm font-bold ${activeTab === "options" ? "border-t-4 border-t-odoo-primary bg-white" : "bg-paper text-neutral-700"}`}>
               Options
             </button>
           </div>

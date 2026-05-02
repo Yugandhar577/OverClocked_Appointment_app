@@ -101,7 +101,7 @@ export function OrganiserBookingsPage() {
                 key={option}
                 type="button"
                 onClick={() => setStatus(option)}
-                className={`h-10 rounded-md border px-3 text-sm font-semibold capitalize ${status === option ? "border-ink bg-ink text-paper" : "border-line bg-white text-ink"}`}
+                className={`h-10 rounded-md border px-3 text-sm font-semibold capitalize ${status === option ? "border-odoo-primary bg-odoo-primary text-paper" : "border-line bg-white text-ink"}`}
               >
                 {option}
               </button>

@@ -171,7 +171,7 @@ export function AdminOrganizationsPage() {
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => { setStatusFilter(""); setPage(1) }}
-            className={["rounded-full border px-3 py-1 text-xs font-bold transition", !statusFilter ? "border-ink bg-ink text-paper" : "border-line bg-white text-neutral-600 hover:border-ink"].join(" ")}
+            className={["rounded-full border px-3 py-1 text-xs font-bold transition", !statusFilter ? "border-odoo-primary bg-odoo-primary text-paper" : "border-line bg-white text-neutral-600 hover:border-odoo-primary"].join(" ")}
           >
             All · {total}
           </button>
@@ -179,7 +179,7 @@ export function AdminOrganizationsPage() {
             statusCounts[s] !== undefined && (
               <button key={s}
                 onClick={() => { setStatusFilter(s); setPage(1) }}
-                className={["inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold transition", statusFilter === s ? "border-ink bg-ink text-paper" : ["border", STATUS_STYLE[s]].join(" ") + " hover:border-ink"].join(" ")}
+                className={["inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold transition", statusFilter === s ? "border-odoo-primary bg-odoo-primary text-paper" : ["border", STATUS_STYLE[s]].join(" ") + " hover:border-odoo-primary"].join(" ")}
               >
                 {STATUS_ICON[s]}
                 {s.charAt(0).toUpperCase() + s.slice(1)} · {statusCounts[s]}
@@ -205,7 +205,7 @@ export function AdminOrganizationsPage() {
           </div>
         </Field>
         {hasFilters && (
-          <button onClick={clearFilters} className="flex h-10 items-center gap-1.5 rounded-md border border-line px-3 text-sm font-semibold text-neutral-600 hover:border-ink hover:text-ink">
+          <button onClick={clearFilters} className="flex h-10 items-center gap-1.5 rounded-md border border-line px-3 text-sm font-semibold text-neutral-600 hover:border-odoo-primary hover:text-ink">
             <X size={14} /> Clear
           </button>
         )}
@@ -286,10 +286,10 @@ export function AdminOrganizationsPage() {
 
       {/* create modal */}
       {createOpen && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 p-4 sm:items-center">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-odoo-primary/40 p-4 sm:items-center">
           <div className="w-full max-w-md rounded-2xl border border-line bg-paper p-6 shadow-panel">
             <div className="flex items-center gap-3">
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-ink text-paper">
+              <div className="grid h-10 w-10 place-items-center rounded-xl bg-odoo-primary text-paper">
                 <Building2 size={18} />
               </div>
               <div>
@@ -336,7 +336,7 @@ function OrgRowActions({ org, onAction, onReport }: {
   return (
     <div ref={ref} className="relative">
       <button onClick={() => setOpen((v) => !v)}
-        className="flex h-8 w-8 items-center justify-center rounded-lg border border-line text-neutral-500 hover:border-ink hover:text-ink transition">
+        className="flex h-8 w-8 items-center justify-center rounded-lg border border-line text-neutral-500 hover:border-odoo-primary hover:text-ink transition">
         <MoreHorizontal size={16} />
       </button>
 

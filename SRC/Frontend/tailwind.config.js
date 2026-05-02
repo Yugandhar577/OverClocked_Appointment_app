@@ -4,6 +4,7 @@ export default {
   theme: {
     extend: {
       colors: {
+        "odoo-primary": "var(--odoo-primary)",
         ink: "#161616",
         paper: "#f8f7f2",
         line: "#d7d2c6",

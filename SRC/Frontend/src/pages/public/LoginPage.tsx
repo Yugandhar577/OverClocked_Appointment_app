@@ -91,7 +91,7 @@ export function LoginPage() {
             className={`focus-ring rounded-md border px-3 py-2 text-xs font-bold transition ${
               currentEmail === account.email
                 ? "border-[var(--odoo-primary)] bg-[#f5efe3] text-ink"
-                : "border-line bg-white text-ink hover:border-ink"
+                : "border-line bg-white text-ink hover:border-odoo-primary"
             }`}
           >
             {account.label}

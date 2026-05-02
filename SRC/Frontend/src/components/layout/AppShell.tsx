@@ -87,7 +87,7 @@ export function AppShell() {
             to="/"
             className="order-1 flex shrink-0 items-center gap-3 font-bold tracking-normal text-ink md:order-none"
           >
-            <span className="grid h-9 w-9 place-items-center rounded-md bg-ink text-paper">OC</span>
+            <span className="grid h-9 w-9 place-items-center rounded-md bg-odoo-primary text-paper">OC</span>
             <span>OverClocked</span>
           </Link>
           <div className="order-2 ml-auto flex shrink-0 items-center gap-2 md:order-none md:ml-0 md:hidden">
@@ -204,7 +204,7 @@ function NavItem({ to, children }: { to: string; children: React.ReactNode }) {
     <NavLink
       to={to}
       className={({ isActive }) =>
-        `inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-semibold ${isActive ? "bg-ink text-paper" : "text-ink hover:bg-white"}`
+        `inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-semibold ${isActive ? "bg-odoo-primary text-paper" : "text-ink hover:bg-white"}`
       }
     >
       {children}

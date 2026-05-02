@@ -132,7 +132,7 @@ export function HomePage() {
         <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-signal/10 blur-3xl" />
         <div className="relative flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="flex items-start gap-3">
-            <span className="mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-ink text-paper">
+            <span className="mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-odoo-primary text-paper">
               <Sparkles size={18} />
             </span>
             <div>

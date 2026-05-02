@@ -49,7 +49,7 @@ const STATUS_ICON: Record<string, React.ReactNode> = {
 const ROLE_STYLE: Record<string, string> = {
   customer: "bg-blue-50 text-blue-800",
   organiser: "bg-emerald-50 text-emerald-800",
-  admin: "bg-ink text-paper",
+  admin: "bg-odoo-primary text-paper",
 }
 
 function initials(name: string) {
@@ -261,7 +261,7 @@ export function AdminOrganizationDetailPage() {
         <div className="flex border-b border-line">
           {([ ["overview", "Overview", <LayoutGrid size={14} />], ["members", "Members", <Users size={14} />], ["audit", "Audit log", <History size={14} />]] as [Tab, string, React.ReactNode][]).map(([id, label, icon]) => (
             <button key={id} onClick={() => setTab(id)}
-              className={["flex items-center gap-2 px-5 py-3.5 text-sm font-semibold transition border-b-2", tab === id ? "border-ink text-ink" : "border-transparent text-neutral-500 hover:text-ink"].join(" ")}>
+              className={["flex items-center gap-2 px-5 py-3.5 text-sm font-semibold transition border-b-2", tab === id ? "border-odoo-primary text-ink" : "border-transparent text-neutral-500 hover:text-ink"].join(" ")}>
               {icon}{label}
             </button>
           ))}
@@ -383,7 +383,7 @@ export function AdminOrganizationDetailPage() {
 
       {/* report modal */}
       {reportOpen && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 p-4 sm:items-center">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-odoo-primary/40 p-4 sm:items-center">
           <div className="w-full max-w-lg rounded-2xl border border-line bg-paper p-6 shadow-panel">
             <div className="flex items-center gap-3">
               <div className="grid h-10 w-10 place-items-center rounded-xl bg-warn/10">
@@ -409,7 +409,7 @@ export function AdminOrganizationDetailPage() {
 
       {/* confirm dialog */}
       {confirmAction && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-odoo-primary/40 p-4">
           <div className="w-full max-w-sm rounded-2xl border border-line bg-paper p-6 shadow-panel">
             <div className="flex items-center gap-3">
               <div className={["grid h-10 w-10 place-items-center rounded-xl", confirmAction.danger ? "bg-warn/10" : "bg-signal/10"].join(" ")}>
