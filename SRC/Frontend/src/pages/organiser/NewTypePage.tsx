@@ -1,4 +1,4 @@
-import { CalendarDays, ImagePlus, Link2, Package, Plus, Send, Trash2, Users, X } from "lucide-react"
+import { CalendarDays, ExternalLink, ImagePlus, Link2, Package, Plus, Send, Trash2, Users, X } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 
@@ -22,6 +22,7 @@ import type { ActivityItem, AppointmentTypeDetail, ResourceCandidate } from "../
 import { Button } from "../../components/ui/Button"
 import { Input, Textarea } from "../../components/ui/Field"
 import { Notice } from "../../components/ui/Notice"
+import { listMailTemplates } from "../../lib/mailTemplates"
 
 type Tab = "availabilities" | "questions" | "communication" | "options"
 
@@ -102,8 +103,16 @@ export function NewTypePage() {
   const { appointmentTypeId } = useParams()
   const [searchParams] = useSearchParams()
   const initialPreset = searchParams.get("preset") || "meeting"
+  const initialTab = (searchParams.get("tab") as Tab | null) || "availabilities"
+  const activeTabFromQuery: Tab =
+    initialTab === "questions" || initialTab === "communication" || initialTab === "options" ? initialTab : "availabilities"
+  const mailTemplates = useMemo(() => listMailTemplates(), [])
+  const bookingTemplates = mailTemplates.filter((template) => template.type === "booking")
+  const cancellationTemplates = mailTemplates.filter((template) => template.type === "cancellation")
+  const emailReminderTemplates = mailTemplates.filter((template) => template.type === "email_reminder")
+  const smsReminderTemplates = mailTemplates.filter((template) => template.type === "sms_reminder")
 
-  const [activeTab, setActiveTab] = useState<Tab>("availabilities")
+  const [activeTab, setActiveTab] = useState<Tab>(activeTabFromQuery)
   const [message, setMessage] = useState("")
   const [loading, setLoading] = useState(Boolean(appointmentTypeId))
   const [saving, setSaving] = useState(false)
@@ -147,6 +156,9 @@ export function NewTypePage() {
   const [composerMode, setComposerMode] = useState<"message" | "note" | null>(null)
   const [composerText, setComposerText] = useState("")
   const [postingActivity, setPostingActivity] = useState(false)
+  const [coverImageCompressed, setCoverImageCompressed] = useState<string | null>(null)
+  const [coverImageCacheKey, setCoverImageCacheKey] = useState<string | null>(null)
+  const [coverImagePreview, setCoverImagePreview] = useState<string>("")
 
   const totalResourceCapacity = useMemo(() => resources.reduce((sum, resource) => sum + Number(resource.capacity || 0), 0), [resources])
   const displayCapacity = manageCapacity ? Math.max(1, capacity || totalResourceCapacity || 1) : 1
@@ -198,6 +210,9 @@ export function NewTypePage() {
     setCancellationEmailTemplate(detail.cancellation_email_template || "Appointment: Appointment Canceled")
     setReminderEmailHours(detail.reminder_email_hours ?? 3)
     setReminderSmsHours(detail.reminder_sms_hours ?? 1)
+    setCoverImageCompressed(detail.cover_image_compressed ?? null)
+    setCoverImageCacheKey(detail.cover_image_cache_key ?? null)
+    setCoverImagePreview(loadCachedCoverImage(detail.cover_image_cache_key) || detail.image_url || detail.cover_image_compressed || "")
     setResources(detail.resources.length ? detail.resources.map((resource) => ({
       id: resource.id,
       name: resource.name,
@@ -252,6 +267,8 @@ export function NewTypePage() {
         cancellation_email_template: cancellationEmailTemplate,
         reminder_email_hours: reminderEmailHours,
         reminder_sms_hours: reminderSmsHours,
+        cover_image_compressed: coverImageCompressed,
+        cover_image_cache_key: coverImageCacheKey,
       }
       const id = appointmentTypeId
         ? (await updateAppointmentType(appointmentTypeId, payload)).id
@@ -414,6 +431,24 @@ export function NewTypePage() {
     }
   }
 
+  async function handleCoverImage(file: File | null) {
+    if (!file) return
+    setMessage("")
+    try {
+      const original = await readFileAsDataUrl(file)
+      const compressed = await compressImage(original)
+      const cacheKey = `appointment-cover:${appointmentTypeId || "draft"}:${Date.now()}`
+      localStorage.setItem(cacheKey, original)
+      setImageUrl(compressed)
+      setCoverImageCompressed(compressed)
+      setCoverImageCacheKey(cacheKey)
+      setCoverImagePreview(original)
+      setMessage("Image ready. Compressed copy will be saved to the database; original is cached in this browser.")
+    } catch {
+      setMessage("Could not process that image. Try a smaller PNG or JPG.")
+    }
+  }
+
   if (loading) return <Notice>Loading appointment type...</Notice>
 
   return (
@@ -485,11 +520,34 @@ export function NewTypePage() {
                 </TwoColumn>
               </section>
 
-              <section className="grid content-start gap-4">
-                <label className="ml-auto grid h-28 w-28 cursor-pointer place-items-center overflow-hidden border border-line bg-white text-neutral-400">
-                  {imageUrl ? <img src={imageUrl} alt="" className="h-full w-full object-cover" /> : <ImagePlus size={58} />}
-                  <input type="file" accept="image/*" className="hidden" onChange={(event) => handleImageFile(event.target.files?.[0])} />
-                </label>
+              <section className="grid content-start gap-4 rounded-md border border-line bg-white p-5 shadow-sm">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-neutral-500">Assignment</p>
+                    <h2 className="text-lg font-bold text-ink">Staff and resources</h2>
+                  </div>
+                  <label className="group relative h-20 w-20 shrink-0 cursor-pointer overflow-hidden rounded-md border border-line bg-paper text-neutral-400">
+                    {coverImagePreview || imageUrl ? (
+                      <img src={coverImagePreview || imageUrl} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="grid h-full w-full place-items-center">
+                        <ImagePlus size={42} />
+                      </span>
+                    )}
+                    <span className="absolute inset-0 hidden place-items-center bg-black/45 text-xs font-bold text-white group-hover:grid">
+                      Change
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      className="sr-only"
+                      onChange={(event) => handleCoverImage(event.target.files?.[0] ?? null)}
+                    />
+                  </label>
+                </div>
+                <p className="text-xs text-neutral-600">
+                  Upload an image once: a small compressed copy is stored with the appointment type, and the original stays cached in this browser for sharper previews.
+                </p>
                 <TwoColumn label="Book">
                   <RadioRow value={bookBy} onChange={setBookBy} options={[["user", "Users"], ["resource", "Resources"]]} />
                 </TwoColumn>
@@ -615,20 +673,51 @@ export function NewTypePage() {
                     <section className="grid content-start gap-5">
                       <h3 className="border-b border-line pb-2 text-sm font-bold uppercase">Emails & SMS</h3>
                       <TwoColumn label="Reminders">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span>Email</span>
-                          <Input type="number" min={0} max={168} value={reminderEmailHours} onChange={(event) => setReminderEmailHours(Number(event.target.value))} className="w-20" />
-                          <span>hours</span>
-                          <span>SMS</span>
-                          <Input type="number" min={0} max={168} value={reminderSmsHours} onChange={(event) => setReminderSmsHours(Number(event.target.value))} className="w-20" />
-                          <span>hours</span>
+                        <div className="flex flex-wrap gap-2">
+                          <span className="rounded-full bg-rose-50 px-3 py-1 text-sm font-semibold text-ink">
+                            Email - {reminderEmailHours} Hours
+                            <button type="button" className="ml-2" onClick={() => setReminderEmailHours(0)}>x</button>
+                          </span>
+                          <span className="rounded-full bg-rose-50 px-3 py-1 text-sm font-semibold text-ink">
+                            SMS - {reminderSmsHours} Hours
+                            <button type="button" className="ml-2" onClick={() => setReminderSmsHours(0)}>x</button>
+                          </span>
+                          <button type="button" className="text-sm font-bold text-signal" onClick={() => setReminderEmailHours((value) => value || 3)}>
+                            Add reminder
+                          </button>
                         </div>
                       </TwoColumn>
                       <TwoColumn label="Booking Email ?">
-                        <Input value={bookingEmailTemplate} onChange={(event) => setBookingEmailTemplate(event.target.value)} />
+                        <TemplatePicker
+                          value={bookingEmailTemplate}
+                          templates={bookingTemplates}
+                          fallback="Booking Confirmation"
+                          onChange={setBookingEmailTemplate}
+                        />
                       </TwoColumn>
                       <TwoColumn label="Cancellation Email ?">
-                        <Input value={cancellationEmailTemplate} onChange={(event) => setCancellationEmailTemplate(event.target.value)} />
+                        <TemplatePicker
+                          value={cancellationEmailTemplate}
+                          templates={cancellationTemplates}
+                          fallback="Cancellation (System)"
+                          onChange={setCancellationEmailTemplate}
+                        />
+                      </TwoColumn>
+                      <TwoColumn label="Reminder Email ?">
+                        <TemplatePicker
+                          value=""
+                          templates={emailReminderTemplates}
+                          fallback="Reminder Email (System)"
+                          onChange={() => undefined}
+                        />
+                      </TwoColumn>
+                      <TwoColumn label="Reminder SMS ?">
+                        <TemplatePicker
+                          value=""
+                          templates={smsReminderTemplates}
+                          fallback="Reminder SMS (System)"
+                          onChange={() => undefined}
+                        />
                       </TwoColumn>
                     </section>
                   </div>
@@ -784,6 +873,41 @@ function TwoColumn({ label, children }: { label: string; children: React.ReactNo
   )
 }
 
+function TemplatePicker({
+  value,
+  templates,
+  fallback,
+  onChange,
+}: {
+  value: string
+  templates: Array<{ id: string; name: string; type: string; source: string }>
+  fallback: string
+  onChange: (value: string) => void
+}) {
+  const selected = templates.find((template) => template.name === value || template.id === value) ?? templates[0]
+  return (
+    <div className="flex gap-2">
+      <select
+        value={selected?.name ?? value ?? ""}
+        onChange={(event) => onChange(event.target.value)}
+        className="focus-ring h-10 min-w-0 flex-1 rounded-md border border-line bg-white px-3"
+      >
+        {!selected && <option value="">{fallback}</option>}
+        {templates.map((template) => (
+          <option key={template.id} value={template.name}>
+            {template.name} {template.source === "System" ? "(System)" : ""}
+          </option>
+        ))}
+      </select>
+      <Link to={selected ? `/organiser/mail-templates/${selected.id}` : "/organiser/mail-templates"}>
+        <Button type="button" variant="secondary" title="Open template">
+          <ExternalLink size={16} />
+        </Button>
+      </Link>
+    </div>
+  )
+}
+
 function RadioRow({ value, onChange, options }: { value: string; onChange: (value: string) => void; options: Array<[string, string]> }) {
   return (
     <div className="flex flex-wrap gap-4">
@@ -853,4 +977,44 @@ function CheckboxLine({ label, checked, onChange, children }: { label: string; c
       </label>
     </TwoColumn>
   )
+}
+
+function loadCachedCoverImage(cacheKey?: string | null) {
+  if (!cacheKey) return ""
+  try {
+    return localStorage.getItem(cacheKey) || ""
+  } catch {
+    return ""
+  }
+}
+
+function readFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result || ""))
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(file)
+  })
+}
+
+function compressImage(dataUrl: string) {
+  return new Promise<string>((resolve, reject) => {
+    const image = new Image()
+    image.onload = () => {
+      const maxSide = 360
+      const scale = Math.min(1, maxSide / Math.max(image.width, image.height))
+      const canvas = document.createElement("canvas")
+      canvas.width = Math.max(1, Math.round(image.width * scale))
+      canvas.height = Math.max(1, Math.round(image.height * scale))
+      const context = canvas.getContext("2d")
+      if (!context) {
+        reject(new Error("canvas_unavailable"))
+        return
+      }
+      context.drawImage(image, 0, 0, canvas.width, canvas.height)
+      resolve(canvas.toDataURL("image/jpeg", 0.62))
+    }
+    image.onerror = () => reject(new Error("image_load_failed"))
+    image.src = dataUrl
+  })
 }

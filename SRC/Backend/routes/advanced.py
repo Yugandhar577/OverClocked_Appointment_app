@@ -1,3 +1,11 @@
+"""
+Backend documentation for `routes/advanced.py`.
+
+This route module keeps HTTP concerns thin: validate inputs, call service-layer logic, and return typed API responses.
+Comments in this file are intentionally explicit because the project is used in a hackathon-style handoff.
+Keep behavior changes separate from documentation-only edits so reviews can verify no runtime contract changed.
+"""
+
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,11 +33,13 @@ from SRC.Backend.services import advanced_service, booking_service
 router = APIRouter(tags=["advanced"])
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 @router.get("/features", response_model=FeatureFlagsOut)
 async def features():
     return FeatureFlagsOut(flags=advanced_service.feature_flags())
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 @router.get("/integrations/google-calendar/connect")
 async def google_calendar_connect():
     return {
@@ -39,6 +49,7 @@ async def google_calendar_connect():
     }
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 @router.post("/waitlist", response_model=WaitlistOut, status_code=status.HTTP_201_CREATED)
 async def join_waitlist(
     payload: WaitlistCreate,
@@ -54,6 +65,7 @@ async def join_waitlist(
     )
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 @router.get("/admin/waitlist", response_model=list[WaitlistOut])
 async def admin_waitlist(
     _current_user: User = Depends(require_role("organiser", "admin")),
@@ -62,6 +74,7 @@ async def admin_waitlist(
     return await advanced_service.list_waitlist(session)
 
 
+# Backend note: Creates a new domain record after validation and keeps side effects scoped to this workflow.
 @router.post("/booking-cart/quote", response_model=CartQuoteOut, status_code=status.HTTP_201_CREATED)
 async def create_cart_quote(
     payload: CartQuoteCreate,
@@ -76,6 +89,7 @@ async def create_cart_quote(
     )
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 @router.post("/pricing/estimate", response_model=PricingEstimateOut)
 async def pricing_estimate(
     payload: PricingEstimateRequest,
@@ -89,11 +103,13 @@ async def pricing_estimate(
     )
 
 
+# Backend note: Reads data and shapes it for the caller without mutating booking state unless noted by the implementation.
 @router.get("/theme", response_model=ThemeSettingsOut)
 async def get_theme(session: AsyncSession = Depends(get_db)):
     return await advanced_service.active_theme(session)
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 @router.put("/admin/theme", response_model=ThemeSettingsOut)
 async def save_theme(
     payload: ThemeSettingsPayload,
@@ -104,6 +120,7 @@ async def save_theme(
     return {"id": theme.id, "name": theme.name, "settings": theme.settings, "is_default": False}
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 @router.post("/admin/theme/reset", response_model=ThemeSettingsOut)
 async def reset_theme(
     _current_user: User = Depends(require_role("admin")),
@@ -112,6 +129,7 @@ async def reset_theme(
     return await advanced_service.reset_theme(session)
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 @router.post("/admin/manual-bookings", response_model=BookingCreateResponse, status_code=status.HTTP_201_CREATED)
 async def manual_booking(
     payload: ManualBookingCreate,
@@ -141,6 +159,7 @@ async def manual_booking(
     )
 
 
+# Backend note: Creates a new domain record after validation and keeps side effects scoped to this workflow.
 @router.post("/admin/packages", response_model=PackageOut, status_code=status.HTTP_201_CREATED)
 async def create_package(
     payload: PackageCreate,
@@ -150,11 +169,13 @@ async def create_package(
     return await advanced_service.create_package(session, payload)
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 @router.get("/packages", response_model=list[PackageOut])
 async def packages(session: AsyncSession = Depends(get_db)):
     return await advanced_service.list_packages(session)
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 @router.get("/admin/analytics", response_model=AnalyticsOut)
 async def analytics(
     _current_user: User = Depends(require_role("admin", "organiser")),

@@ -27,6 +27,8 @@ api.interceptors.response.use(
 )
 
 const API_MESSAGES: Record<string, string> = {
+  not_owner:
+    "This booking belongs to another account. Sign in as the customer or organiser for this booking, or open it from My appointments.",
   invalid_credentials: "Email or password is incorrect.",
   account_unverified:
     "This email is not verified yet. Finish signup with the code we sent you (see the OTP page), then try logging in.",
@@ -35,11 +37,23 @@ const API_MESSAGES: Record<string, string> = {
   email_exists: "An account with this email already exists.",
   google_auth_failed: "Google sign-in failed. Please try again or use email and password.",
   google_not_configured: "Google sign-in is not enabled on this server.",
+  booking_in_progress: "Someone is booking this slot right now. Please try again in a moment.",
+  slot_unavailable: "That slot is no longer available. Refresh the slots and choose another time.",
+  capacity_exceeded: "That slot does not have enough seats left.",
+  intake_answer_missing: "Please answer every required question before booking.",
 }
 
 export function errorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
     const detail = error.response?.data?.detail
+    if (Array.isArray(detail)) {
+      return detail
+        .map((item) => {
+          const field = Array.isArray(item.loc) ? item.loc[item.loc.length - 1] : "field"
+          return `${String(field).replaceAll("_", " ")}: ${item.msg}`
+        })
+        .join("; ")
+    }
     if (typeof detail === "string") {
       return API_MESSAGES[detail] ?? detail.replaceAll("_", " ")
     }
@@ -54,5 +68,6 @@ export function errorMessage(error: unknown): string {
     if (status === 401) return API_MESSAGES.invalid_credentials
     return error.message
   }
+  if (error instanceof Error) return error.message
   return "Something went wrong"
 }

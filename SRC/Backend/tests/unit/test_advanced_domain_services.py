@@ -1,3 +1,11 @@
+"""
+Backend documentation for `tests/unit/test_advanced_domain_services.py`.
+
+This test module documents expected backend behavior and protects critical booking workflows from regressions.
+Comments in this file are intentionally explicit because the project is used in a hackathon-style handoff.
+Keep behavior changes separate from documentation-only edits so reviews can verify no runtime contract changed.
+"""
+
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from uuid import uuid4
@@ -10,6 +18,7 @@ from SRC.Backend.services.policy_service import is_late_cancellation, late_cance
 from SRC.Backend.services.recurring_service import expand_recurrence
 
 
+# Backend note: Asserts a specific backend behavior so future changes can be checked safely.
 def test_assignment_prefers_available_preferred_resource():
     preferred = uuid4()
     other = uuid4()
@@ -23,6 +32,7 @@ def test_assignment_prefers_available_preferred_resource():
     ) == preferred
 
 
+# Backend note: Asserts a specific backend behavior so future changes can be checked safely.
 def test_recurring_weekly_expansion():
     assert expand_recurrence(date(2026, 5, 2), "weekly", 3) == [
         date(2026, 5, 2),
@@ -31,6 +41,7 @@ def test_recurring_weekly_expansion():
     ]
 
 
+# Backend note: Asserts a specific backend behavior so future changes can be checked safely.
 def test_policy_fee_and_reliability_score():
     slot_start = datetime(2026, 5, 2, 12, 0, tzinfo=timezone.utc)
     now = datetime(2026, 5, 2, 11, 30, tzinfo=timezone.utc)
@@ -40,6 +51,7 @@ def test_policy_fee_and_reliability_score():
     assert reliability_score(10, no_shows=1, late_cancellations=2) == 60
 
 
+# Backend note: Asserts a specific backend behavior so future changes can be checked safely.
 def test_notification_template_requires_values():
     assert render_template("Hello $customer", {"customer": "Asha"}) == "Hello Asha"
     with pytest.raises(MissingTemplateValueError):

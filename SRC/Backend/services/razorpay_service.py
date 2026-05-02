@@ -5,7 +5,6 @@ from SRC.Backend.config import get_settings
 
 
 def _client():
-    """Lazy-import razorpay so the API process can start even before `pip install razorpay`."""
     try:
         import razorpay
     except ImportError as exc:

@@ -7,6 +7,7 @@ import { googleLogin } from "../../api/auth"
 import { errorMessage } from "../../api/client"
 import { useAuth } from "../../auth/useAuth"
 import { canUseRequestedRoute, defaultRouteForRoles } from "../../lib/postLoginRedirect"
+import { slideNavigate } from "../../lib/routeTransition"
 import { loginSchema, type LoginFormData } from "../../lib/validation"
 import { Button } from "../../components/ui/Button"
 import { Field, Input } from "../../components/ui/Field"
@@ -49,7 +50,7 @@ export function LoginPage() {
     clearErrors("root")
     try {
       const user = await auth.login(data.email, data.password)
-      navigate(getRedirect(user.roles))
+      slideNavigate(navigate, getRedirect(user.roles))
     } catch (err) {
       setError("root", { message: errorMessage(err) })
     }
@@ -61,7 +62,7 @@ export function LoginPage() {
       const res = await googleLogin(credential)
       localStorage.setItem("access_token", res.access_token)
       await auth.refresh()
-      navigate(getRedirect(res.user.roles))
+      slideNavigate(navigate, getRedirect(res.user.roles))
     } catch (err) {
       setError("root", { message: errorMessage(err) })
     }
@@ -152,7 +153,14 @@ export function LoginPage() {
 
       <p className="text-sm text-neutral-700">
         New here?{" "}
-        <Link className="font-semibold text-signal" to="/signup">
+        <Link
+          className="font-semibold text-signal"
+          to="/signup"
+          onClick={(event) => {
+            event.preventDefault()
+            slideNavigate(navigate, "/signup")
+          }}
+        >
           Create an account
         </Link>
       </p>

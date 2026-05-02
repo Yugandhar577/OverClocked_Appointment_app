@@ -3,10 +3,11 @@ import { GoogleLogin } from "@react-oauth/google"
 import { useForm } from "react-hook-form"
 import { Link, useNavigate } from "react-router-dom"
 
-import { signup, googleLogin } from "../../api/auth"
+import { googleLogin, signup } from "../../api/auth"
 import { errorMessage } from "../../api/client"
 import { useAuth } from "../../auth/useAuth"
 import { defaultRouteForRoles } from "../../lib/postLoginRedirect"
+import { slideNavigate } from "../../lib/routeTransition"
 import { signupSchema, type SignupFormData } from "../../lib/validation"
 import { Button } from "../../components/ui/Button"
 import { Field, Input } from "../../components/ui/Field"
@@ -32,7 +33,7 @@ export function SignupPage() {
     clearErrors("root")
     try {
       await signup(data.fullName, data.email, data.password)
-      navigate(`/otp?email=${encodeURIComponent(data.email)}`)
+      slideNavigate(navigate, `/otp?email=${encodeURIComponent(data.email)}`)
     } catch (err) {
       setError("root", { message: errorMessage(err) })
     }
@@ -44,7 +45,7 @@ export function SignupPage() {
       const res = await googleLogin(credential)
       localStorage.setItem("access_token", res.access_token)
       await auth.refresh()
-      navigate(defaultRouteForRoles(res.user.roles))
+      slideNavigate(navigate, defaultRouteForRoles(res.user.roles))
     } catch (err) {
       setError("root", { message: errorMessage(err) })
     }
@@ -56,19 +57,10 @@ export function SignupPage() {
 
       <form className="grid gap-4" onSubmit={handleSubmit(submit)} noValidate>
         <Field label="Full name" error={errors.fullName?.message}>
-          <Input
-            {...register("fullName")}
-            autoComplete="name"
-            aria-invalid={errors.fullName ? true : undefined}
-          />
+          <Input {...register("fullName")} autoComplete="name" aria-invalid={errors.fullName ? true : undefined} />
         </Field>
         <Field label="Email" error={errors.email?.message}>
-          <Input
-            {...register("email")}
-            type="email"
-            autoComplete="email"
-            aria-invalid={errors.email ? true : undefined}
-          />
+          <Input {...register("email")} type="email" autoComplete="email" aria-invalid={errors.email ? true : undefined} />
         </Field>
         <Field label="Password" error={errors.password?.message}>
           <Input
@@ -78,7 +70,7 @@ export function SignupPage() {
             aria-invalid={errors.password ? true : undefined}
           />
         </Field>
-        <Button disabled={isSubmitting}>{isSubmitting ? "Creating account…" : "Create account"}</Button>
+        <Button disabled={isSubmitting}>{isSubmitting ? "Creating account..." : "Create account"}</Button>
       </form>
 
       {googleClientId ? (
@@ -105,7 +97,14 @@ export function SignupPage() {
         </>
       ) : null}
 
-      <Link className="text-sm font-semibold text-signal" to="/login">
+      <Link
+        className="text-sm font-semibold text-signal"
+        to="/login"
+        onClick={(event) => {
+          event.preventDefault()
+          slideNavigate(navigate, "/login")
+        }}
+      >
         Back to login
       </Link>
     </div>

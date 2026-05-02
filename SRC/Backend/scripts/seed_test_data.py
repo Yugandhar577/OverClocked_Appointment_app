@@ -1,3 +1,11 @@
+"""
+Backend documentation for `scripts/seed_test_data.py`.
+
+This script module supports local setup, seeding, or developer operations and should remain idempotent where possible.
+Comments in this file are intentionally explicit because the project is used in a hackathon-style handoff.
+Keep behavior changes separate from documentation-only edits so reviews can verify no runtime contract changed.
+"""
+
 import asyncio
 from datetime import time
 from types import SimpleNamespace
@@ -23,6 +31,7 @@ from SRC.Backend.services import booking_service, slot_generation_service
 from SRC.Backend.services.auth_service import ensure_default_roles
 
 
+# Backend note: Creates a new domain record after validation and keeps side effects scoped to this workflow.
 async def create_user(session, full_name: str, email: str, password: str, roles: list[str]) -> User:
     user = User(
         full_name=full_name,
@@ -41,6 +50,27 @@ async def create_user(session, full_name: str, email: str, password: str, roles:
     return user
 
 
+# Function explanation:
+# `create_user` constructs a `User`, hashes the password, inserts the user
+# and then links roles by inserting into the `user_roles` association.
+# Returning the `User` allows the caller to set relationships or persist
+# additional fields before the outer transaction commits.
+#
+# Alternative (commented): use ORM relationship helpers to attach roles
+# instead of manual `insert` into `user_roles`. This leverages SQLAlchemy
+# relationships and can simplify code.
+#
+# async def create_user_via_relationship(session, full_name, email, password, roles):
+#     user = User(...)
+#     for role_name in roles:
+#         role = (await session.execute(select(Role).where(Role.name == role_name))).scalars().one()
+#         user.roles.append(role)
+#     session.add(user)
+#     await session.flush()
+#     return user
+
+
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 async def main() -> None:
     async with async_session_factory() as session:
         async with session.begin():
@@ -268,3 +298,14 @@ async def main() -> None:
 
 if __name__ == "__main__":
     asyncio.run(main())
+
+
+# Function explanation:
+# `main` is a seeding script that truncates tables, creates default roles,
+# and inserts demo organizations, users, appointment types, resources, and
+# bookings. It's intended for local development and testing.
+#
+# Alternative (commented): break `main` into smaller idempotent seed
+# functions (e.g., `seed_organizations`, `seed_users`, `seed_appointments`)
+# and run them conditionally. This improves reusability and reduces risk
+# when running partial seeds in CI or staging.

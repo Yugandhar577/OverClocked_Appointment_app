@@ -1,7 +1,16 @@
+"""
+Backend documentation for `services/assignment_service.py`.
+
+This service module owns business rules and database coordination so route handlers and UI code stay simple.
+Comments in this file are intentionally explicit because the project is used in a hackathon-style handoff.
+Keep behavior changes separate from documentation-only edits so reviews can verify no runtime contract changed.
+"""
+
 from dataclasses import dataclass
 from uuid import UUID
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 @dataclass(frozen=True)
 class AssignmentCandidate:
     resource_id: UUID
@@ -12,6 +21,7 @@ class AssignmentCandidate:
     languages: set[str] | None = None
 
 
+# Backend note: API request contract accepted from the frontend.
 @dataclass(frozen=True)
 class AssignmentRequest:
     required_skills: set[str] | None = None
@@ -20,6 +30,7 @@ class AssignmentRequest:
     language: str | None = None
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 def choose_resource(candidates: list[AssignmentCandidate], request: AssignmentRequest) -> UUID | None:
     eligible = [candidate for candidate in candidates if candidate.available]
     if request.required_skills:

@@ -1,3 +1,11 @@
+"""
+Backend documentation for `schemas/advanced.py`.
+
+This schema module defines request/response contracts used by FastAPI and the frontend TypeScript client.
+Comments in this file are intentionally explicit because the project is used in a hackathon-style handoff.
+Keep behavior changes separate from documentation-only edits so reviews can verify no runtime contract changed.
+"""
+
 from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
@@ -5,16 +13,19 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class FeatureFlagsOut(BaseModel):
     flags: dict[str, bool]
 
 
+# Backend note: Input contract used when creating a backend resource.
 class WaitlistCreate(BaseModel):
     appointment_type_id: UUID
     slot_id: UUID | None = None
     notes: str | None = None
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class WaitlistOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -29,6 +40,7 @@ class WaitlistOut(BaseModel):
     created_at: datetime
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class CartItem(BaseModel):
     appointment_type_id: UUID
     duration_minutes: int = Field(gt=0)
@@ -36,11 +48,13 @@ class CartItem(BaseModel):
     resource_id: UUID | None = None
 
 
+# Backend note: Input contract used when creating a backend resource.
 class CartQuoteCreate(BaseModel):
     items: list[CartItem]
     currency: str = "INR"
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class CartQuoteOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -53,6 +67,7 @@ class CartQuoteOut(BaseModel):
     created_at: datetime
 
 
+# Backend note: API request contract accepted from the frontend.
 class PricingEstimateRequest(BaseModel):
     appointment_type_id: UUID
     duration_minutes: int | None = None
@@ -60,6 +75,7 @@ class PricingEstimateRequest(BaseModel):
     context: dict | None = None
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class PricingEstimateOut(BaseModel):
     base_price: Decimal
     total_price: Decimal
@@ -67,11 +83,13 @@ class PricingEstimateOut(BaseModel):
     breakdown: list[dict]
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class ThemeSettingsPayload(BaseModel):
     name: str = "Odoo Default"
     settings: dict
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class ThemeSettingsOut(BaseModel):
     id: UUID | None = None
     name: str
@@ -79,6 +97,7 @@ class ThemeSettingsOut(BaseModel):
     is_default: bool = False
 
 
+# Backend note: Input contract used when creating a backend resource.
 class ManualBookingCreate(BaseModel):
     customer_id: UUID
     appointment_type_id: UUID
@@ -89,6 +108,7 @@ class ManualBookingCreate(BaseModel):
     internal_notes: str | None = None
 
 
+# Backend note: Input contract used when creating a backend resource.
 class PackageCreate(BaseModel):
     name: str
     appointment_type_id: UUID | None = None
@@ -97,6 +117,7 @@ class PackageCreate(BaseModel):
     currency: str = "INR"
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class PackageOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -109,6 +130,7 @@ class PackageOut(BaseModel):
     is_active: bool
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class AnalyticsOut(BaseModel):
     total_bookings: int
     completed_bookings: int

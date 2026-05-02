@@ -10,12 +10,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from SRC.Backend.config import Settings, get_settings
+from SRC.Backend.core.booking_access import can_use_payment_endpoints
 from SRC.Backend.core.deps import get_current_user
 from SRC.Backend.core.errors import NotFoundError, NotOwnerError
 from SRC.Backend.core.time import utcnow
 from SRC.Backend.db.models import Appointment, AppointmentType, Payment, User
 from SRC.Backend.db.session import get_db
 from SRC.Backend.schemas.payments import (
+    DemoCompletePaymentRequest,
     InitiatePaymentRequest,
     InitiatePaymentResponse,
     PaymentStatusResponse,
@@ -38,17 +40,13 @@ def _map_gateway_method(method: str | None) -> str:
         return "card"
     if m == "wallet":
         return "wallet"
+    if m == "netbanking":
+        return "netbanking"
     if m == "emi":
         return "emi"
     if len(m) > 30:
         return m[:30]
     return m
-
-
-def _ensure_customer(appointment: Appointment, user: User) -> None:
-    roles = getattr(user, "roles_snapshot", [])
-    if appointment.customer_id != user.id and "admin" not in roles:
-        raise NotOwnerError()
 
 
 def _env_allows_auto_mock(settings: Settings) -> bool:
@@ -60,7 +58,6 @@ def _has_razorpay_credentials(settings: Settings) -> bool:
 
 
 def use_payment_mock(settings: Settings) -> bool:
-    """True when checkout should skip Razorpay (explicit flag, or dev without keys)."""
     if settings.mock_payments:
         return True
     if not _env_allows_auto_mock(settings):
@@ -85,10 +82,12 @@ async def initiate_payment(
     appointment = await session.get(Appointment, body.appointment_id)
     if not appointment:
         raise NotFoundError("appointment")
-    _ensure_customer(appointment, current_user)
-
     appt_type = await session.get(AppointmentType, appointment.appointment_type_id)
-    if not appt_type or not appt_type.is_paid or appt_type.price is None:
+    if not appt_type:
+        raise NotFoundError("appointment_type")
+    if not can_use_payment_endpoints(current_user, appointment, appt_type):
+        raise NotOwnerError()
+    if not appt_type.is_paid or appt_type.price is None:
         raise HTTPException(status_code=400, detail="Appointment type is not configured for paid checkout")
 
     existing = await session.scalar(select(Payment).where(Payment.appointment_id == appointment.id))
@@ -126,7 +125,6 @@ async def initiate_payment(
             raise HTTPException(status_code=502, detail=f"Could not create Razorpay order: {exc}") from exc
 
         order_id = order["id"]
-        # Use Razorpay's order payload for checkout so amount/currency cannot drift from the order.
         checkout_amount_paise = int(order["amount"])
         checkout_currency = str(order.get("currency") or currency).upper()
         meta = {
@@ -139,22 +137,24 @@ async def initiate_payment(
         existing.amount = amount
         existing.currency = currency
         existing.status = "initiated"
+        existing.payment_method = "razorpay"
         existing.payment_gateway = "razorpay"
         existing.payment_gateway_ref = None
         existing.paid_at = None
         existing.gateway_metadata = meta
         session.add(existing)
     else:
-        pay = Payment(
-            appointment_id=appointment.id,
-            amount=amount,
-            currency=currency,
-            status="initiated",
-            payment_method="razorpay",
-            payment_gateway="razorpay",
-            gateway_metadata=meta,
+        session.add(
+            Payment(
+                appointment_id=appointment.id,
+                amount=amount,
+                currency=currency,
+                payment_method="razorpay",
+                status="initiated",
+                payment_gateway="razorpay",
+                gateway_metadata=meta,
+            )
         )
-        session.add(pay)
     await session.commit()
 
     customer = await session.get(User, appointment.customer_id)
@@ -188,7 +188,7 @@ def _complete_payment_success(
     now = datetime.now(timezone.utc)
     payment.status = "success"
     payment.payment_gateway_ref = razorpay_payment_id
-    payment.payment_method = payment_method
+    payment.payment_method = payment_method[:30]
     payment.paid_at = now
     merged = dict(payment.gateway_metadata or {})
     merged["razorpay_order_id"] = razorpay_order_id
@@ -208,7 +208,11 @@ async def verify_payment(
     appointment = await session.get(Appointment, body.appointment_id)
     if not appointment:
         raise NotFoundError("appointment")
-    _ensure_customer(appointment, current_user)
+    appt_type = await session.get(AppointmentType, appointment.appointment_type_id)
+    if not appt_type:
+        raise NotFoundError("appointment_type")
+    if not can_use_payment_endpoints(current_user, appointment, appt_type):
+        raise NotOwnerError()
 
     payment = await session.scalar(select(Payment).where(Payment.appointment_id == appointment.id))
     if not payment:
@@ -295,6 +299,83 @@ async def verify_payment(
     )
 
 
+@router.post("/demo-complete", response_model=VerifyPaymentResponse)
+async def demo_complete_payment(
+    body: DemoCompletePaymentRequest,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
+) -> VerifyPaymentResponse:
+    if not settings.demo_payment_bypass:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Demo payment completion is disabled. Set DEMO_PAYMENT_BYPASS=true for presentation mode only.",
+        )
+
+    appointment = await session.get(Appointment, body.appointment_id)
+    if not appointment:
+        raise NotFoundError("appointment")
+    appt_type = await session.get(AppointmentType, appointment.appointment_type_id)
+    if not appt_type:
+        raise NotFoundError("appointment_type")
+    if not can_use_payment_endpoints(current_user, appointment, appt_type):
+        raise NotOwnerError()
+    if not appt_type.is_paid or appt_type.price is None:
+        raise HTTPException(status_code=400, detail="Appointment type is not configured for paid checkout")
+
+    payment = await session.scalar(select(Payment).where(Payment.appointment_id == appointment.id))
+    if payment and payment.status == "success":
+        return VerifyPaymentResponse(
+            payment_id=payment.id,
+            status=payment.status,
+            razorpay_payment_id=payment.payment_gateway_ref or "demo_existing",
+            appointment_status=appointment.status,
+        )
+
+    pm_label = (body.payment_method or "upi_pay")[:30]
+    gateway_ref = f"demo_rzp_{appointment.id.hex[:18]}"
+    metadata = dict(payment.gateway_metadata or {}) if payment else {}
+    if body.razorpay_order_id:
+        metadata["razorpay_order_id"] = body.razorpay_order_id
+    metadata["presentation_demo"] = True
+    metadata["presentation_note"] = "Demo success — no live Razorpay capture (DEMO_PAYMENT_BYPASS)."
+
+    if payment:
+        payment.amount = appt_type.price
+        payment.currency = appt_type.currency.upper()
+        payment.payment_method = pm_label
+        payment.status = "success"
+        payment.payment_gateway = "razorpay"
+        payment.payment_gateway_ref = gateway_ref
+        payment.paid_at = datetime.now(timezone.utc)
+        payment.gateway_metadata = metadata
+    else:
+        payment = Payment(
+            appointment_id=appointment.id,
+            amount=appt_type.price,
+            currency=appt_type.currency.upper(),
+            payment_method=pm_label,
+            status="success",
+            payment_gateway="razorpay",
+            payment_gateway_ref=gateway_ref,
+            paid_at=datetime.now(timezone.utc),
+            gateway_metadata=metadata,
+        )
+
+    appointment.status = "confirmed"
+    appointment.confirmed_at = appointment.confirmed_at or utcnow()
+    session.add_all([payment, appointment])
+    await session.commit()
+    await session.refresh(payment)
+    await session.refresh(appointment)
+    return VerifyPaymentResponse(
+        payment_id=payment.id,
+        status=payment.status,
+        razorpay_payment_id=gateway_ref,
+        appointment_status=appointment.status,
+    )
+
+
 @router.get("/status/{appointment_id}", response_model=PaymentStatusResponse)
 async def payment_status(
     appointment_id: UUID,
@@ -304,7 +385,11 @@ async def payment_status(
     appointment = await session.get(Appointment, appointment_id)
     if not appointment:
         raise NotFoundError("appointment")
-    _ensure_customer(appointment, current_user)
+    appt_type = await session.get(AppointmentType, appointment.appointment_type_id)
+    if not appt_type:
+        raise NotFoundError("appointment_type")
+    if not can_use_payment_endpoints(current_user, appointment, appt_type):
+        raise NotOwnerError()
 
     payment = await session.scalar(select(Payment).where(Payment.appointment_id == appointment_id))
     if not payment:

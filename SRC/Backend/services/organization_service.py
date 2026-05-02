@@ -1,3 +1,11 @@
+"""
+Backend documentation for `services/organization_service.py`.
+
+This service module owns business rules and database coordination so route handlers and UI code stay simple.
+Comments in this file are intentionally explicit because the project is used in a hackathon-style handoff.
+Keep behavior changes separate from documentation-only edits so reviews can verify no runtime contract changed.
+"""
+
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -9,10 +17,12 @@ from SRC.Backend.db.models import AppointmentType, Organization, User
 ALLOWED_ORG_STATUSES = frozenset({"active", "inactive", "suspended", "flagged", "aborted"})
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 def normalize_domain(domain: str) -> str:
     return domain.strip().lower()
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 def merge_report_notes(previous: str | None, new_note: str) -> str:
     note = new_note.strip()
     if not previous:
@@ -20,6 +30,7 @@ def merge_report_notes(previous: str | None, new_note: str) -> str:
     return f"{previous.rstrip()}\n---\n{note}"
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 async def _domain_taken(session: AsyncSession, domain: str, exclude_id: UUID | None) -> bool:
     stmt = select(Organization.id).where(Organization.domain == domain)
     if exclude_id is not None:
@@ -27,6 +38,7 @@ async def _domain_taken(session: AsyncSession, domain: str, exclude_id: UUID | N
     return (await session.scalar(stmt)) is not None
 
 
+# Backend note: Collects a filtered collection for API or service consumers while preserving existing response contracts.
 async def list_organizations(
     session: AsyncSession,
     status: str | None,
@@ -71,10 +83,12 @@ async def list_organizations(
     return items, total
 
 
+# Backend note: Reads data and shapes it for the caller without mutating booking state unless noted by the implementation.
 async def get_organization(session: AsyncSession, org_id: UUID) -> Organization | None:
     return await session.get(Organization, org_id)
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 async def organization_detail_dict(session: AsyncSession, org: Organization) -> dict:
     total_members = (
         await session.scalar(select(func.count()).select_from(User).where(User.organization_id == org.id))
@@ -105,6 +119,7 @@ async def organization_detail_dict(session: AsyncSession, org: Organization) -> 
     }
 
 
+# Backend note: Creates a new domain record after validation and keeps side effects scoped to this workflow.
 async def create_organization(session: AsyncSession, name: str, domain: str) -> Organization:
     key = normalize_domain(domain)
     if await _domain_taken(session, key, None):
@@ -115,6 +130,7 @@ async def create_organization(session: AsyncSession, name: str, domain: str) -> 
     return org
 
 
+# Backend note: Updates an existing domain record in place while preserving unrelated data.
 async def update_organization(session: AsyncSession, org_id: UUID, name: str | None, domain: str | None) -> Organization:
     org = await session.get(Organization, org_id)
     if not org:
@@ -129,6 +145,7 @@ async def update_organization(session: AsyncSession, org_id: UUID, name: str | N
     return org
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 async def set_organization_status(session: AsyncSession, org_id: UUID, status: str) -> Organization:
     if status not in ALLOWED_ORG_STATUSES:
         raise AppError({"detail": "invalid_organization_status", "allowed": sorted(ALLOWED_ORG_STATUSES)})
@@ -139,6 +156,7 @@ async def set_organization_status(session: AsyncSession, org_id: UUID, status: s
     return org
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 async def append_report(session: AsyncSession, org_id: UUID, notes: str) -> Organization:
     org = await session.get(Organization, org_id)
     if not org:

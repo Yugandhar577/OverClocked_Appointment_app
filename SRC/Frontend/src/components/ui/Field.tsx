@@ -1,8 +1,12 @@
 import { clsx } from "clsx"
-import { forwardRef, type InputHTMLAttributes, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react"
+import { forwardRef, type InputHTMLAttributes, type LabelHTMLAttributes, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react"
 
-export function Label({ children }: { children: React.ReactNode }) {
-  return <label className="text-sm font-semibold text-ink">{children}</label>
+export function Label({ children, htmlFor, className }: LabelHTMLAttributes<HTMLLabelElement>) {
+  return (
+    <label htmlFor={htmlFor} className={clsx("text-sm font-semibold text-ink", className)}>
+      {children}
+    </label>
+  )
 }
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function Input(props, ref) {

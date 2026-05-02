@@ -3,8 +3,8 @@ import { Outlet } from "react-router-dom"
 export function AuthShell() {
   return (
     <div className="grid min-h-screen place-items-center bg-[#fbf7ef] px-4 py-10">
-      <div className="grid w-full max-w-5xl overflow-hidden rounded-xl border border-line bg-white shadow-panel lg:grid-cols-[0.95fr_1.05fr]">
-        <section className="hidden bg-[#f5efe3] p-8 lg:block">
+      <div className="auth-shell-card grid w-full max-w-5xl overflow-hidden rounded-xl border border-line bg-white shadow-panel lg:grid-cols-[0.95fr_1.05fr]">
+        <section className="auth-panel-left hidden bg-[#f5efe3] p-8 lg:block">
           <div className="flex items-center gap-3">
             <span className="grid h-11 w-11 place-items-center rounded-lg bg-ink text-lg font-bold text-paper">OC</span>
             <div>
@@ -23,7 +23,7 @@ export function AuthShell() {
             Role-aware navigation keeps booking, organiser setup, and admin controls separated.
           </div>
         </section>
-        <section className="p-6 md:p-8">
+        <section className="auth-panel-right p-6 md:p-8">
           <div className="mb-7 flex items-center gap-3 lg:hidden">
             <span className="grid h-10 w-10 place-items-center rounded-md bg-ink text-paper">OC</span>
             <div>

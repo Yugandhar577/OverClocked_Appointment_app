@@ -1,3 +1,11 @@
+"""
+Backend documentation for `services/booking_service.py`.
+
+This service module owns business rules and database coordination so route handlers and UI code stay simple.
+Comments in this file are intentionally explicit because the project is used in a hackathon-style handoff.
+Keep behavior changes separate from documentation-only edits so reviews can verify no runtime contract changed.
+"""
+
 import secrets
 from datetime import timedelta
 from uuid import UUID
@@ -6,7 +14,9 @@ from sqlalchemy import and_, func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from SRC.Backend.config import get_settings
+from SRC.Backend.core.booking_access import can_view_booking, ids_equal, is_admin
 from SRC.Backend.core.errors import (
+    BookingInProgressError,
     CancelWindowClosedError,
     CapacityExceededError,
     IntakeAnswerMissingError,
@@ -36,10 +46,25 @@ LOCK_SLOT_SQL = """SELECT * FROM generated_slots
   FOR UPDATE SKIP LOCKED"""
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 def _confirmation_code() -> str:
     return secrets.token_urlsafe(8).replace("-", "").replace("_", "")[:10].upper()
 
 
+# Explanation:
+# `_confirmation_code` generates a short human-friendly confirmation code
+# derived from a URL-safe token. It's designed to be compact and usable in
+# communications.
+#
+# Alternative (commented): use an incremental sequence per-organiser or
+# a short hash of appointment id for reproducible codes.
+#
+# def _confirmation_code_seq():
+#     # allocate from a sequence and format
+#     pass
+
+
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 async def _required_question_ids(session: AsyncSession, appointment_type_id: UUID) -> set[UUID]:
     result = await session.execute(
         select(AppointmentQuestion.id).where(
@@ -50,12 +75,55 @@ async def _required_question_ids(session: AsyncSession, appointment_type_id: UUI
     return set(result.scalars().all())
 
 
+# Explanation:
+# `_required_question_ids` returns mandatory question ids for an
+# appointment type to validate intake answers on booking creation.
+#
+# Alternative (commented): fetch and cache question definitions per
+# appointment type to reduce repeated queries.
+#
+# async def _required_question_ids_cached(...):
+#     pass
+
+
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 def _answer_text(value) -> str | None:
     if isinstance(value, (dict, list)):
         return None
     return str(value)
 
 
+# Explanation:
+# `_answer_text` converts scalar answers to text while preserving
+# structured answers in `answer_json`. This avoids double-serializing
+# JSON for structured inputs.
+#
+# Alternative (commented): always store JSON and derive text when
+# needed in views, simplifying storage format at the cost of queries.
+#
+# def _answer_text_always_json(value):
+#     return json.dumps(value)
+
+
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
+async def _raise_slot_lock_or_unavailable(session: AsyncSession, slot_id: UUID) -> None:
+    slot = await session.get(GeneratedSlot, slot_id)
+    if slot and not slot.is_blocked and slot.booked_count < slot.max_capacity:
+        raise BookingInProgressError()
+    raise SlotUnavailableError()
+
+
+# Explanation:
+# `_raise_slot_lock_or_unavailable` distinguishes two cases that both make
+# the `FOR UPDATE SKIP LOCKED` query return no row:
+# 1. the slot is genuinely full/blocked/missing, or
+# 2. another transaction currently owns the lock and is booking it.
+# The second case returns a retryable domain error so the frontend can
+# show a better message and refresh availability instead of implying the
+# slot is permanently gone.
+
+
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 async def availability(
     session: AsyncSession,
     *,
@@ -104,6 +172,20 @@ async def availability(
     return result
 
 
+# Explanation:
+# `availability` lists generated slots in a date range and returns their
+# remaining capacity and waitlist status. It is careful to compute the
+# remaining capacity using `booked_count` and `max_capacity`.
+#
+# Alternative (commented): include live reservations by checking a
+# temporary reservation table for pending holds (useful for cart flows).
+#
+# async def availability_with_holds(...):
+#     # combine generated slots with temporary holds
+#     pass
+
+
+# Backend note: Creates a new domain record after validation and keeps side effects scoped to this workflow.
 async def create(session: AsyncSession, payload, actor: User) -> tuple[Appointment, GeneratedSlot, AppointmentType, str]:
     async with session.begin():
         appointment_type = await session.get(AppointmentType, payload.appointment_type_id)
@@ -113,7 +195,7 @@ async def create(session: AsyncSession, payload, actor: User) -> tuple[Appointme
         slot_result = await session.execute(text(LOCK_SLOT_SQL), {"slot_id": payload.slot_id})
         slot_row = slot_result.mappings().first()
         if slot_row is None:
-            raise SlotUnavailableError()
+            await _raise_slot_lock_or_unavailable(session, payload.slot_id)
         if slot_row["appointment_type_id"] != payload.appointment_type_id:
             raise SlotUnavailableError()
         if payload.resource_id and slot_row["resource_id"] != payload.resource_id:
@@ -194,6 +276,21 @@ async def create(session: AsyncSession, payload, actor: User) -> tuple[Appointme
     return appointment, slot, appointment_type, organiser_name
 
 
+# Explanation:
+# `create` performs an atomic booking workflow: it locks the slot row
+# (SKIP LOCKED), validates capacity and answers, creates the appointment
+# and answers, updates slot counts, logs the change, and queues an email.
+#
+# Alternative (commented): use a queuing approach where booking requests
+# are enqueued and processed by a single worker to avoid distributed
+# locking complexity at scale.
+#
+# async def create_via_queue(session, payload, actor):
+#     # place booking request in queue and return pending result
+#     pass
+
+
+# Backend note: Reads data and shapes it for the caller without mutating booking state unless noted by the implementation.
 async def get_booking_detail(session: AsyncSession, booking_id: UUID, actor: User | None = None) -> dict:
     stmt = (
         select(Appointment, GeneratedSlot, AppointmentType)
@@ -205,7 +302,7 @@ async def get_booking_detail(session: AsyncSession, booking_id: UUID, actor: Use
     if not row:
         raise NotFoundError("appointment")
     appointment, slot, appointment_type = row
-    if actor and actor.id not in {appointment.customer_id, appointment_type.organiser_id} and "admin" not in getattr(actor, "roles_snapshot", []):
+    if actor and not can_view_booking(actor, appointment, appointment_type):
         raise NotOwnerError()
     return {
         **appointment.__dict__,
@@ -216,6 +313,19 @@ async def get_booking_detail(session: AsyncSession, booking_id: UUID, actor: Use
     }
 
 
+# Explanation:
+# `get_booking_detail` composes appointment data and related slot/type
+# info into a dictionary for API responses; it enforces ownership checks
+# when an `actor` is provided.
+#
+# Alternative (commented): return a strongly-typed Pydantic model instead
+# of a raw dict to enforce contracts at the service boundary.
+#
+# def get_booking_detail_model(...):
+#     return BookingDetailModel(...)
+
+
+# Backend note: Collects a filtered collection for API or service consumers while preserving existing response contracts.
 async def list_for_customer(session: AsyncSession, actor: User, status: str | None, page: int, page_size: int) -> tuple[list[dict], int]:
     now = utcnow()
     stmt = (
@@ -251,6 +361,18 @@ async def list_for_customer(session: AsyncSession, actor: User, status: str | No
     ], total or 0
 
 
+# Explanation:
+# `list_for_customer` returns a paginated list of bookings for the
+# customer, supporting simple `upcoming`/`past` filtering.
+#
+# Alternative (commented): use a dedicated read replica or reporting
+# database for heavy listing queries to offload primary DB.
+#
+# async def list_for_customer_replica(...):
+#     pass
+
+
+# Backend note: Collects a filtered collection for API or service consumers while preserving existing response contracts.
 async def list_for_organiser(
     session: AsyncSession,
     actor: User,
@@ -298,12 +420,31 @@ async def list_for_organiser(
     ], total or 0
 
 
+# Explanation:
+# `list_for_organiser` returns bookings for an organiser with filtering
+# and pagination similar to the customer listing.
+#
+# Alternative (commented): return pre-aggregated statistics for dashboards
+# and allow drill-down queries for details.
+
+
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 def _window_closed(slot_start, minutes: int | None) -> bool:
     if minutes is None:
         return False
     return utcnow() + timedelta(minutes=minutes) > slot_start
 
 
+# Explanation:
+# `_window_closed` checks whether an action (cancel/reschedule) is
+# allowed based on `minutes` before the slot. It returns False when no
+# window is configured.
+#
+# Alternative (commented): compute windows per-user or per-role for more
+# flexible cancellation policies.
+
+
+# Backend note: Moves a booking-like record through cancellation handling without bypassing business rules.
 async def cancel(session: AsyncSession, booking_id: UUID, actor: User, reason: str | None, bypass_window: bool = False) -> Appointment:
     async with session.begin():
         row = (
@@ -317,9 +458,9 @@ async def cancel(session: AsyncSession, booking_id: UUID, actor: User, reason: s
         if not row:
             raise NotFoundError("appointment")
         appointment, slot, appointment_type = row
-        if actor.id not in {appointment.customer_id, appointment_type.organiser_id} and "admin" not in getattr(actor, "roles_snapshot", []):
+        if not can_view_booking(actor, appointment, appointment_type):
             raise NotOwnerError()
-        if actor.id == appointment.customer_id and not bypass_window and _window_closed(slot.start_datetime, appointment_type.cancel_before_minutes):
+        if ids_equal(actor.id, appointment.customer_id) and not bypass_window and _window_closed(slot.start_datetime, appointment_type.cancel_before_minutes):
             raise CancelWindowClosedError()
 
         await session.execute(text("SELECT * FROM generated_slots WHERE id = :slot_id FOR UPDATE"), {"slot_id": slot.id})
@@ -338,6 +479,16 @@ async def cancel(session: AsyncSession, booking_id: UUID, actor: User, reason: s
     return updated
 
 
+# Explanation:
+# `cancel` runs inside a transaction, validates permissions and windows,
+# updates slot counts and appointment status via `appointment_service`,
+# logs the change and queues a cancellation email.
+#
+# Alternative (commented): implement soft-cancel for manual review or
+# schedule a background job to finalize refunds and external actions.
+
+
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 async def confirm(session: AsyncSession, booking_id: UUID, actor: User) -> Appointment:
     async with session.begin():
         row = (
@@ -350,7 +501,7 @@ async def confirm(session: AsyncSession, booking_id: UUID, actor: User) -> Appoi
         if not row:
             raise NotFoundError("appointment")
         appointment, appointment_type = row
-        if appointment_type.organiser_id != actor.id and "admin" not in getattr(actor, "roles_snapshot", []):
+        if not ids_equal(appointment_type.organiser_id, actor.id) and not is_admin(actor):
             raise NotOwnerError()
         updated = await appointment_service.transition(session, appointment.id, "confirmed", actor)
         queue_email(
@@ -364,6 +515,15 @@ async def confirm(session: AsyncSession, booking_id: UUID, actor: User) -> Appoi
     return updated
 
 
+# Explanation:
+# `confirm` validates organiser rights, transitions appointment state
+# using `appointment_service`, and queues a confirmation email.
+#
+# Alternative (commented): allow batch confirmations and rate-limit
+# confirmation emails to avoid spam.
+
+
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 async def reschedule(session: AsyncSession, booking_id: UUID, new_slot_id: UUID, actor: User) -> tuple[Appointment, Appointment]:
     async with session.begin():
         row = (
@@ -379,9 +539,9 @@ async def reschedule(session: AsyncSession, booking_id: UUID, new_slot_id: UUID,
         old, old_slot, appointment_type = row
         if old.slot_id == new_slot_id:
             raise SameSlotRescheduleError()
-        if actor.id not in {old.customer_id, appointment_type.organiser_id} and "admin" not in getattr(actor, "roles_snapshot", []):
+        if not can_view_booking(actor, old, appointment_type):
             raise NotOwnerError()
-        if actor.id == old.customer_id and _window_closed(old_slot.start_datetime, appointment_type.reschedule_before_minutes):
+        if ids_equal(actor.id, old.customer_id) and _window_closed(old_slot.start_datetime, appointment_type.reschedule_before_minutes):
             raise RescheduleWindowClosedError()
 
         for slot_id in sorted([old.slot_id, new_slot_id]):
@@ -435,3 +595,12 @@ async def reschedule(session: AsyncSession, booking_id: UUID, new_slot_id: UUID,
         session.add(SlotCapacityLog(slot_id=old_slot.id, appointment_id=old.id, delta=-old.people_count, new_count=old_slot.booked_count))
         session.add(SlotCapacityLog(slot_id=new_slot.id, appointment_id=new_appointment.id, delta=old.people_count, new_count=new_slot.booked_count))
     return old, new_appointment
+
+
+# Explanation:
+# `reschedule` performs checks on windows and availability, locks old
+# and new slots appropriately, creates a new appointment copying answers
+# and updates slot counts atomically.
+#
+# Alternative (commented): perform a tentative hold on the new slot and
+# require confirmation within a time window to prevent instant double-booking.

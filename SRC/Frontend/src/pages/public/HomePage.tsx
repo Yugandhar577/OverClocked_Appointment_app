@@ -12,11 +12,16 @@ import {
 } from "../../components/public/LandingLoginModal"
 import { Button } from "../../components/ui/Button"
 import { Notice } from "../../components/ui/Notice"
+import { Skeleton, SkeletonText } from "../../components/ui/Skeleton"
 
 export function HomePage() {
+  const pageSize = 6
   const [items, setItems] = useState<AppointmentTypeListItem[]>([])
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
   const [landingPromptOpen, setLandingPromptOpen] = useState(false)
   const [searchParams] = useSearchParams()
   const { user, hasRole } = useAuth()
@@ -34,11 +39,30 @@ export function HomePage() {
   }, [items, query])
 
   useEffect(() => {
-    listAppointmentTypes(true)
-      .then((data) => setItems(data.items))
+    listAppointmentTypes(true, 1, pageSize)
+      .then((data) => {
+        setItems(data.items)
+        setPage(data.page)
+        setTotal(data.total)
+      })
       .catch((err) => setError(errorMessage(err)))
       .finally(() => setLoading(false))
   }, [])
+
+  async function loadMore() {
+    setError("")
+    setLoadingMore(true)
+    try {
+      const data = await listAppointmentTypes(true, page + 1, pageSize)
+      setItems((current) => [...current, ...data.items])
+      setPage(data.page)
+      setTotal(data.total)
+    } catch (err) {
+      setError(errorMessage(err))
+    } finally {
+      setLoadingMore(false)
+    }
+  }
 
   useEffect(() => {
     if (user) return
@@ -125,7 +149,19 @@ export function HomePage() {
       {loading && (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {[0, 1, 2].map((item) => (
-            <div key={item} className="h-40 animate-pulse rounded-md border border-line bg-white" />
+            <article key={item} className="rounded-md border border-line bg-paper p-4 shadow-panel">
+              <div className="flex items-start justify-between gap-3">
+                <div className="w-full">
+                  <Skeleton className="h-5 w-2/3 bg-white" />
+                  <Skeleton className="mt-2 h-4 w-1/2 bg-white" />
+                </div>
+                <Skeleton className="h-7 w-20 bg-white" />
+              </div>
+              <div className="mt-6">
+                <SkeletonText lines={2} />
+              </div>
+              <Skeleton className="mt-6 h-11 w-full bg-white" />
+            </article>
           ))}
         </div>
       )}
@@ -159,6 +195,13 @@ export function HomePage() {
       {!loading && !error && items.length === 0 && <Notice>No published appointment types yet.</Notice>}
       {!loading && !error && items.length > 0 && query && visibleItems.length === 0 && (
         <Notice>No services match &ldquo;{searchParams.get("q")?.trim()}&rdquo;. Try another search.</Notice>
+      )}
+      {!query && items.length < total && (
+        <div className="flex justify-center">
+          <Button type="button" variant="secondary" onClick={loadMore} disabled={loadingMore}>
+            {loadingMore ? "Loading..." : `Load more services (${items.length}/${total})`}
+          </Button>
+        </div>
       )}
     </div>
   )

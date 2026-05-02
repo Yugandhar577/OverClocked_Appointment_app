@@ -9,32 +9,52 @@ import type { Booking } from "../../api/types"
 import { useAuth } from "../../auth/useAuth"
 import { Button } from "../../components/ui/Button"
 import { Notice } from "../../components/ui/Notice"
+import { Skeleton } from "../../components/ui/Skeleton"
 import { StatusBadge } from "../../components/ui/StatusBadge"
 import { formatDateTime } from "../../lib/format"
 
 export function MyAppointmentsPage() {
   const { hasRole } = useAuth()
+  const pageSize = 8
   const [status, setStatus] = useState("upcoming")
   const [items, setItems] = useState<Booking[]>([])
   const [error, setError] = useState("")
+  const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
 
   const isAdminOnly = hasRole("admin") && !hasRole("customer")
   const isOrganiserOnly = hasRole("organiser") && !hasRole("customer") && !hasRole("admin")
 
-  function load() {
-    myAppointments(status)
-      .then((data) => setItems(data.items))
+  function load(nextPage = 1, append = false) {
+    setError("")
+    if (append) {
+      setLoadingMore(true)
+    } else {
+      setLoading(true)
+    }
+    myAppointments(status, nextPage, pageSize)
+      .then((data) => {
+        setItems((current) => (append ? [...current, ...data.items] : data.items))
+        setPage(data.page)
+        setTotal(data.total)
+      })
       .catch((err) => setError(errorMessage(err)))
+      .finally(() => {
+        setLoading(false)
+        setLoadingMore(false)
+      })
   }
 
-  useEffect(load, [status])
+  useEffect(() => load(1, false), [status])
 
   async function cancel(id: string) {
     if (!window.confirm("Cancel this booking?")) return
     setError("")
     try {
       await cancelBooking(id, "customer_cancelled")
-      load()
+      load(1, false)
     } catch (err) {
       setError(errorMessage(err))
     }
@@ -74,6 +94,17 @@ export function MyAppointmentsPage() {
             </tr>
           </thead>
           <tbody>
+            {loading &&
+              Array.from({ length: 5 }, (_, index) => (
+                <tr key={`skeleton-${index}`} className="border-t border-line">
+                  <Td><Skeleton className="h-10 w-48 bg-white" /></Td>
+                  <Td><Skeleton className="h-4 w-36 bg-white" /></Td>
+                  <Td><Skeleton className="h-8 w-24 rounded-full bg-white" /></Td>
+                  <Td><Skeleton className="h-4 w-28 bg-white" /></Td>
+                  <Td><Skeleton className="h-10 w-24 bg-white" /></Td>
+                  <Td><Skeleton className="h-10 w-24 bg-white" /></Td>
+                </tr>
+              ))}
             {items.map((booking) => (
               <tr key={booking.id} className="border-t border-line">
                 <Td>
@@ -121,6 +152,13 @@ export function MyAppointmentsPage() {
               Book appointment
             </Button>
           </Link>
+        </div>
+      )}
+      {items.length < total && (
+        <div className="flex justify-center">
+          <Button type="button" variant="secondary" onClick={() => load(page + 1, true)} disabled={loadingMore}>
+            {loadingMore ? "Loading..." : `Load more appointments (${items.length}/${total})`}
+          </Button>
         </div>
       )}
     </div>

@@ -1,3 +1,11 @@
+"""
+Backend documentation for `db/models/organization.py`.
+
+This model module declares database persistence structures and relationships used by SQLAlchemy.
+Comments in this file are intentionally explicit because the project is used in a hackathon-style handoff.
+Keep behavior changes separate from documentation-only edits so reviews can verify no runtime contract changed.
+"""
+
 import uuid
 from datetime import datetime
 
@@ -8,6 +16,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from SRC.Backend.db.base import Base
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class Organization(Base):
     __tablename__ = "organizations"
 

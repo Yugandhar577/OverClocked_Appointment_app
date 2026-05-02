@@ -1,3 +1,11 @@
+"""
+Backend documentation for `schemas/appointment_types.py`.
+
+This schema module defines request/response contracts used by FastAPI and the frontend TypeScript client.
+Comments in this file are intentionally explicit because the project is used in a hackathon-style handoff.
+Keep behavior changes separate from documentation-only edits so reviews can verify no runtime contract changed.
+"""
+
 from datetime import datetime, time
 from decimal import Decimal
 from uuid import UUID
@@ -5,6 +13,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 
+# Backend note: Input contract used when creating a backend resource.
 class AppointmentTypeCreate(BaseModel):
     title: str = Field(min_length=2, max_length=200)
     preset_type: str | None = "meeting"
@@ -16,8 +25,11 @@ class AppointmentTypeCreate(BaseModel):
     venue: str | None = None
     image_url: str | None = None
     video_url: str | None = None
+    cover_image_compressed: str | None = None
+    cover_image_cache_key: str | None = None
 
 
+# Backend note: Input contract used when updating a backend resource.
 class AppointmentTypeUpdate(BaseModel):
     title: str = Field(min_length=2, max_length=200)
     preset_type: str | None = "meeting"
@@ -34,8 +46,11 @@ class AppointmentTypeUpdate(BaseModel):
     cancellation_email_template: str | None = "Appointment: Appointment Canceled"
     reminder_email_hours: int | None = Field(default=3, ge=0, le=168)
     reminder_sms_hours: int | None = Field(default=1, ge=0, le=168)
+    cover_image_compressed: str | None = None
+    cover_image_cache_key: str | None = None
 
 
+# Backend note: Input contract used when updating a backend resource.
 class AppointmentTypeUpdateRules(BaseModel):
     requires_confirmation: bool = False
     manage_capacity: bool = True
@@ -54,6 +69,7 @@ class AppointmentTypeUpdateRules(BaseModel):
     slot_interval_minutes: int | None = Field(default=None, ge=5, le=1440)
 
 
+# Backend note: Input contract used when creating a backend resource.
 class ResourceCreate(BaseModel):
     id: UUID | None = None
     name: str
@@ -64,6 +80,7 @@ class ResourceCreate(BaseModel):
     user_ref_id: UUID | None = None
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class ResourceOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -85,6 +102,7 @@ class ResourceCandidateOut(BaseModel):
     user_ref_id: UUID | None = None
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class WorkingHourIn(BaseModel):
     day_of_week: int = Field(ge=0, le=6)
     start_time: time
@@ -92,6 +110,7 @@ class WorkingHourIn(BaseModel):
     resource_id: UUID | None = None
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class WorkingHourOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -102,6 +121,7 @@ class WorkingHourOut(BaseModel):
     resource_id: UUID | None = None
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class QuestionIn(BaseModel):
     label: str
     question_type: str = "text"
@@ -109,6 +129,7 @@ class QuestionIn(BaseModel):
     options: list[str] | None = None
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class QuestionOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -120,6 +141,7 @@ class QuestionOut(BaseModel):
     display_order: int
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class AppointmentTypeListItem(BaseModel):
     id: UUID
     title: str
@@ -130,6 +152,7 @@ class AppointmentTypeListItem(BaseModel):
     preset_type: str | None = None
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class AppointmentTypeOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -167,18 +190,23 @@ class AppointmentTypeOut(BaseModel):
     reminder_email_hours: int | None
     reminder_sms_hours: int | None
     slot_interval_minutes: int | None
+    cover_image_compressed: str | None = None
+    cover_image_cache_key: str | None = None
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class AppointmentTypeDetail(AppointmentTypeOut):
     resources: list[ResourceOut] = []
     questions: list[QuestionOut] = []
     working_hours: list[WorkingHourOut] = []
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class ShareLinkOut(BaseModel):
     url: str
 
 
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class PublishOut(BaseModel):
     id: UUID
     is_published: bool

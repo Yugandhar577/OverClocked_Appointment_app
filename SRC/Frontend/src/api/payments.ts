@@ -16,6 +16,15 @@ export async function verifyPayment(payload: {
   return res.data
 }
 
+export async function demoCompletePayment(payload: {
+  appointment_id: string
+  razorpay_order_id?: string | null
+  payment_method?: string
+}): Promise<PaymentVerifyResponse> {
+  const res = await api.post<PaymentVerifyResponse>("/payments/demo-complete", payload)
+  return res.data
+}
+
 export async function getPaymentStatus(appointmentId: string): Promise<PaymentStatusResponse> {
   const res = await api.get<PaymentStatusResponse>(`/payments/status/${appointmentId}`)
   return res.data

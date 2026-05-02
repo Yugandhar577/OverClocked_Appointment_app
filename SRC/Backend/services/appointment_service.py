@@ -1,3 +1,11 @@
+"""
+Backend documentation for `services/appointment_service.py`.
+
+This service module owns business rules and database coordination so route handlers and UI code stay simple.
+Comments in this file are intentionally explicit because the project is used in a hackathon-style handoff.
+Keep behavior changes separate from documentation-only edits so reviews can verify no runtime contract changed.
+"""
+
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,6 +24,7 @@ ALLOWED_TRANSITIONS = {
 }
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 async def transition(
     session: AsyncSession,
     appointment_id: UUID,
@@ -49,3 +58,16 @@ async def transition(
         )
     )
     return appointment
+
+
+# Explanation:
+# `transition` validates an appointment status change against the allowed
+# transition map, applies timestamps for confirmed/cancelled states, and
+# records an audit log entry for traceability.
+#
+# Alternative (commented): encode transitions as state-machine methods on
+# the model or use a workflow library for richer lifecycle management.
+#
+# def transition_state_machine(appointment, target_status, actor, reason=None):
+#     # consult state machine and apply transition
+#     pass

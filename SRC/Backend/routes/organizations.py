@@ -1,3 +1,11 @@
+"""
+Backend documentation for `routes/organizations.py`.
+
+This route module keeps HTTP concerns thin: validate inputs, call service-layer logic, and return typed API responses.
+Comments in this file are intentionally explicit because the project is used in a hackathon-style handoff.
+Keep behavior changes separate from documentation-only edits so reviews can verify no runtime contract changed.
+"""
+
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
@@ -20,6 +28,7 @@ from SRC.Backend.services import organization_service
 router = APIRouter(prefix="/organizations", tags=["organizations"])
 
 
+# Backend note: Collects a filtered collection for API or service consumers while preserving existing response contracts.
 @router.get("", response_model=Paginated)
 async def list_organizations(
     status: str | None = None,
@@ -38,6 +47,7 @@ async def list_organizations(
     )
 
 
+# Backend note: Creates a new domain record after validation and keeps side effects scoped to this workflow.
 @router.post("", response_model=OrganizationDetailOut)
 async def create_organization(
     payload: OrganizationCreate,
@@ -50,6 +60,7 @@ async def create_organization(
     return OrganizationDetailOut.model_validate(detail)
 
 
+# Backend note: Reads data and shapes it for the caller without mutating booking state unless noted by the implementation.
 @router.get("/{organization_id}", response_model=OrganizationDetailOut)
 async def get_organization(
     organization_id: UUID,
@@ -63,6 +74,7 @@ async def get_organization(
     return OrganizationDetailOut.model_validate(detail)
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 @router.patch("/{organization_id}", response_model=OrganizationDetailOut)
 async def patch_organization(
     organization_id: UUID,
@@ -78,6 +90,7 @@ async def patch_organization(
     return OrganizationDetailOut.model_validate(detail)
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 @router.post("/{organization_id}/activate", response_model=OrganizationDetailOut)
 async def activate_organization(
     organization_id: UUID,
@@ -90,6 +103,7 @@ async def activate_organization(
     return OrganizationDetailOut.model_validate(detail)
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 @router.post("/{organization_id}/deactivate", response_model=OrganizationDetailOut)
 async def deactivate_organization(
     organization_id: UUID,
@@ -102,6 +116,7 @@ async def deactivate_organization(
     return OrganizationDetailOut.model_validate(detail)
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 @router.post("/{organization_id}/suspend", response_model=OrganizationDetailOut)
 async def suspend_organization(
     organization_id: UUID,
@@ -114,6 +129,7 @@ async def suspend_organization(
     return OrganizationDetailOut.model_validate(detail)
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 @router.post("/{organization_id}/abort", response_model=OrganizationDetailOut)
 async def abort_organization(
     organization_id: UUID,
@@ -126,6 +142,7 @@ async def abort_organization(
     return OrganizationDetailOut.model_validate(detail)
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 @router.post("/{organization_id}/report", response_model=OrganizationDetailOut)
 async def report_organization(
     organization_id: UUID,

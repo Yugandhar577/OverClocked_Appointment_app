@@ -40,6 +40,12 @@ class VerifyPaymentRequest(BaseModel):
         return s
 
 
+class DemoCompletePaymentRequest(BaseModel):
+    appointment_id: UUID
+    razorpay_order_id: str | None = None
+    payment_method: str = Field(default="upi_pay", max_length=30)
+
+
 class VerifyPaymentResponse(BaseModel):
     payment_id: UUID
     status: str

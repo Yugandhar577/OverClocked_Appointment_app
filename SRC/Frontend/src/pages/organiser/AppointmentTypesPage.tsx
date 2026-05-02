@@ -1,4 +1,4 @@
-import { CalendarDays, Copy, Headphones, Link2, Monitor, Package, Plus, Search, Settings, Share2, Users, X } from "lucide-react"
+import { CalendarDays, Copy, Headphones, Link2, Mail, Monitor, Package, Plus, Search, Settings, Share2, Users, Wallet, X } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 
@@ -7,6 +7,7 @@ import { errorMessage } from "../../api/client"
 import type { AppointmentTypeListItem } from "../../api/types"
 import { Button } from "../../components/ui/Button"
 import { Notice } from "../../components/ui/Notice"
+import { Skeleton, SkeletonText } from "../../components/ui/Skeleton"
 
 const presets = [
   {
@@ -37,20 +38,30 @@ const presets = [
 
 export function AppointmentTypesPage() {
   const navigate = useNavigate()
+  const pageSize = 8
   const [items, setItems] = useState<Array<AppointmentTypeListItem & { published: boolean }>>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [message, setMessage] = useState("")
   const [query, setQuery] = useState("")
   const [showPresets, setShowPresets] = useState(false)
+  const [publishedPage, setPublishedPage] = useState(1)
+  const [draftPage, setDraftPage] = useState(1)
+  const [publishedTotal, setPublishedTotal] = useState(0)
+  const [draftTotal, setDraftTotal] = useState(0)
 
   useEffect(() => {
-    Promise.all([listAppointmentTypes(true), listAppointmentTypes(false)])
-      .then(([published, drafts]) =>
+    Promise.all([listAppointmentTypes(true, 1, pageSize), listAppointmentTypes(false, 1, pageSize)])
+      .then(([published, drafts]) => {
         setItems([
           ...published.items.map((item) => ({ ...item, published: true })),
           ...drafts.items.map((item) => ({ ...item, published: false })),
-        ]),
-      )
+        ])
+        setPublishedPage(published.page)
+        setDraftPage(drafts.page)
+        setPublishedTotal(published.total)
+        setDraftTotal(drafts.total)
+      })
       .catch((err) => setMessage(errorMessage(err)))
       .finally(() => setLoading(false))
   }, [])
@@ -75,6 +86,30 @@ export function AppointmentTypesPage() {
     navigate(`/organiser/types/new?preset=${preset}`)
   }
 
+  async function loadMore() {
+    setMessage("")
+    setLoadingMore(true)
+    try {
+      const publishedCount = items.filter((item) => item.published).length
+      const draftCount = items.filter((item) => !item.published).length
+      const nextPublished =
+        publishedCount < publishedTotal ? await listAppointmentTypes(true, publishedPage + 1, pageSize) : null
+      const nextDrafts =
+        draftCount < draftTotal ? await listAppointmentTypes(false, draftPage + 1, pageSize) : null
+      setItems((current) => [
+        ...current,
+        ...(nextPublished?.items.map((item) => ({ ...item, published: true })) ?? []),
+        ...(nextDrafts?.items.map((item) => ({ ...item, published: false })) ?? []),
+      ])
+      if (nextPublished) setPublishedPage(nextPublished.page)
+      if (nextDrafts) setDraftPage(nextDrafts.page)
+    } catch (err) {
+      setMessage(errorMessage(err))
+    } finally {
+      setLoadingMore(false)
+    }
+  }
+
   return (
     <div className="grid gap-4">
       <section className="rounded-md border border-line bg-paper">
@@ -88,6 +123,18 @@ export function AppointmentTypesPage() {
               <Share2 size={16} />
               Share
             </Button>
+            <Link to={visibleItems[0] ? `/organiser/types/${visibleItems[0].id}?tab=communication` : "#"}>
+              <Button type="button" variant="secondary" disabled={!visibleItems.length}>
+                <Mail size={16} />
+                Emails
+              </Button>
+            </Link>
+            <Link to={visibleItems[0] ? `/organiser/types/${visibleItems[0].id}?tab=options` : "#"}>
+              <Button type="button" variant="secondary" disabled={!visibleItems.length}>
+                <Wallet size={16} />
+                Payments
+              </Button>
+            </Link>
             <div>
               <p className="text-sm font-bold text-signal">Appointments</p>
               <h1 className="flex items-center gap-2 text-2xl font-bold text-ink">
@@ -108,7 +155,51 @@ export function AppointmentTypesPage() {
         </div>
 
         {message && <div className="p-4"><Notice>{message}</Notice></div>}
-        {loading && <div className="p-4"><Notice>Loading appointment types...</Notice></div>}
+        {!loading && visibleItems.length > 0 && (
+          <div className="border-b border-line bg-white p-4">
+            <div className="grid gap-3 rounded-md border border-line bg-paper p-4 md:grid-cols-[1fr_auto] md:items-center">
+              <div>
+                <h2 className="font-bold text-ink">Razorpay payments and organiser emails are active</h2>
+                <p className="mt-1 text-sm text-neutral-700">
+                  Paid appointment types now use Razorpay checkout. Open Emails for confirmation and reminder templates.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Link to={`/organiser/types/${visibleItems[0].id}?tab=options`}>
+                  <Button type="button" variant="secondary">
+                    <Wallet size={16} />
+                    Payment setup
+                  </Button>
+                </Link>
+                <Link to={`/organiser/types/${visibleItems[0].id}?tab=communication`}>
+                  <Button type="button" variant="secondary">
+                    <Mail size={16} />
+                    Email setup
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
+        {loading && (
+          <div className="divide-y divide-line">
+            {Array.from({ length: 4 }, (_, index) => (
+              <div key={index} className="grid gap-3 p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+                <div>
+                  <Skeleton className="h-6 w-56 bg-white" />
+                  <div className="mt-3 max-w-sm">
+                    <SkeletonText lines={2} />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Skeleton className="h-10 w-24 bg-white" />
+                  <Skeleton className="h-10 w-32 bg-white" />
+                  <Skeleton className="h-10 w-10 bg-white" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="divide-y divide-line">
           {visibleItems.map((item) => (
@@ -129,6 +220,9 @@ export function AppointmentTypesPage() {
                   </span>
                   <span>{item.is_paid ? `INR ${item.price}` : "Free"}</span>
                   <span className="capitalize">{(item.preset_type || "meeting").replace("_", " ")}</span>
+                  <span className={`rounded-full border px-2 py-1 text-xs font-semibold ${item.is_paid ? "border-indigo-200 bg-indigo-50 text-indigo-800" : "border-neutral-200 bg-neutral-50 text-neutral-700"}`}>
+                    {item.is_paid ? "Razorpay enabled" : "No online payment"}
+                  </span>
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -142,6 +236,18 @@ export function AppointmentTypesPage() {
                     Configure
                   </Button>
                 </Link>
+                <Link to={`/organiser/types/${item.id}?tab=communication`}>
+                  <Button type="button" variant="secondary">
+                    <Mail size={16} />
+                    Emails
+                  </Button>
+                </Link>
+                <Link to={`/organiser/types/${item.id}?tab=options`}>
+                  <Button type="button" variant="secondary">
+                    <Wallet size={16} />
+                    Payments
+                  </Button>
+                </Link>
                 <Button type="button" variant="ghost" title="Copy link" onClick={() => copyLink(item.id)}>
                   <Copy size={16} />
                 </Button>
@@ -151,6 +257,42 @@ export function AppointmentTypesPage() {
         </div>
 
         {!loading && visibleItems.length === 0 && <div className="p-4"><Notice>No appointment types yet.</Notice></div>}
+        {!query && items.length < publishedTotal + draftTotal && (
+          <div className="border-t border-line p-4 text-center">
+            <Button type="button" variant="secondary" onClick={loadMore} disabled={loadingMore}>
+              {loadingMore ? "Loading..." : `Load more types (${items.length}/${publishedTotal + draftTotal})`}
+            </Button>
+          </div>
+        )}
+      </section>
+
+      <section className="grid gap-3 rounded-md border border-line bg-white p-4 md:grid-cols-[1fr_auto] md:items-center">
+        <div className="flex items-start gap-3">
+          <span className="grid h-10 w-10 place-items-center rounded-md bg-paper text-signal">
+            <Mail size={18} />
+          </span>
+          <div>
+            <h2 className="font-bold text-ink">Email & SMS workflows</h2>
+            <p className="mt-1 text-sm text-neutral-700">
+              Configure booking emails, cancellation emails, and reminder timing from the organiser type editor.
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {visibleItems[0] ? (
+            <Link to={`/organiser/types/${visibleItems[0].id}?tab=communication`}>
+              <Button type="button" variant="secondary">
+                <Mail size={16} />
+                Open email section
+              </Button>
+            </Link>
+          ) : (
+            <Button type="button" variant="secondary" disabled>
+              <Mail size={16} />
+              Open email section
+            </Button>
+          )}
+        </div>
       </section>
 
       <div className="grid gap-3 md:grid-cols-3">

@@ -97,6 +97,8 @@ export interface AppointmentTypeDetail {
   reminder_email_hours?: number | null
   reminder_sms_hours?: number | null
   slot_interval_minutes?: number | null
+  cover_image_compressed?: string | null
+  cover_image_cache_key?: string | null
   resources: Resource[]
   questions: Question[]
   working_hours: WorkingHour[]

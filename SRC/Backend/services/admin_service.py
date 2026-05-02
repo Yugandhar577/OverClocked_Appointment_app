@@ -1,3 +1,11 @@
+"""
+Backend documentation for `services/admin_service.py`.
+
+This service module owns business rules and database coordination so route handlers and UI code stay simple.
+Comments in this file are intentionally explicit because the project is used in a hackathon-style handoff.
+Keep behavior changes separate from documentation-only edits so reviews can verify no runtime contract changed.
+"""
+
 from uuid import UUID
 
 from sqlalchemy import delete, func, insert, select
@@ -8,6 +16,7 @@ from SRC.Backend.db.models import Appointment, Role, User, user_roles
 from SRC.Backend.services.auth_service import ensure_default_roles, get_roles_for_user
 
 
+# Backend note: Collects a filtered collection for API or service consumers while preserving existing response contracts.
 async def list_users(
     session: AsyncSession,
     role: str | None,
@@ -36,6 +45,7 @@ async def list_users(
     return items, total or 0
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 async def set_active(session: AsyncSession, target_user_id: UUID, actor: User, is_active: bool) -> User:
     async with session.begin():
         if target_user_id == actor.id and not is_active:
@@ -47,6 +57,7 @@ async def set_active(session: AsyncSession, target_user_id: UUID, actor: User, i
     return user
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 async def replace_roles(session: AsyncSession, target_user_id: UUID, roles: list[str], actor: User) -> list[str]:
     async with session.begin():
         await ensure_default_roles(session)
@@ -69,6 +80,7 @@ async def replace_roles(session: AsyncSession, target_user_id: UUID, roles: list
     return roles
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 async def stats(session: AsyncSession) -> dict:
     total_users = await session.scalar(select(func.count()).select_from(User))
     total_appointments = await session.scalar(select(func.count()).select_from(Appointment))

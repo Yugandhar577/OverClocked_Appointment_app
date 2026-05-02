@@ -1,3 +1,11 @@
+"""
+Backend documentation for `services/auth_service.py`.
+
+This service module owns business rules and database coordination so route handlers and UI code stay simple.
+Comments in this file are intentionally explicit because the project is used in a hackathon-style handoff.
+Keep behavior changes separate from documentation-only edits so reviews can verify no runtime contract changed.
+"""
+
 import random
 import secrets
 from datetime import timedelta
@@ -29,6 +37,7 @@ DEFAULT_ROLES = {
 }
 
 
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 async def ensure_default_roles(session: AsyncSession) -> None:
     result = await session.execute(select(Role.name))
     existing = set(result.scalars().all())
@@ -38,6 +47,23 @@ async def ensure_default_roles(session: AsyncSession) -> None:
     await session.flush()
 
 
+    # Explanation:
+    # `ensure_default_roles` ensures that the application's default role
+    # records exist. It queries existing names and inserts missing ones.
+    #
+    # Alternative (commented, placed immediately below function):
+    # Use an idempotent `upsert` (ON CONFLICT) to avoid race conditions in
+    # high-concurrency environments.
+    #
+    # async def ensure_default_roles_upsert(session: AsyncSession) -> None:
+    #     for name, description in DEFAULT_ROLES.items():
+    #         await session.execute(text("""
+    #             INSERT INTO roles (name, description) VALUES (:name, :description)
+    #             ON CONFLICT (name) DO UPDATE SET description = EXCLUDED.description
+    #         """), {"name": name, "description": description})
+
+
+# Backend note: Reads data and shapes it for the caller without mutating booking state unless noted by the implementation.
 async def get_roles_for_user(session: AsyncSession, user_id: UUID) -> list[str]:
     result = await session.execute(
         select(Role.name)
@@ -48,10 +74,31 @@ async def get_roles_for_user(session: AsyncSession, user_id: UUID) -> list[str]:
     return list(result.scalars().all())
 
 
+    # Explanation:
+    # `get_roles_for_user` returns role names ordered for a given user id by
+    # querying the association table. This keeps role resolution efficient.
+    #
+    # Alternative (commented): cache role lookups in Redis for hot users to
+    # reduce DB joins on frequently accessed accounts.
+
+
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 def _otp_code() -> str:
     return f"{random.randint(0, 999999):06d}"
 
 
+# Explanation:
+# `_otp_code` generates a zero-padded 6-digit OTP string.
+#
+# Alternative (commented): use an HMAC-based OTP (TOTP/HOTP) for better
+# security and server-side validation without persistent storage.
+#
+# def _otp_totp(secret: str) -> str:
+#     import pyotp
+#     return pyotp.TOTP(secret).now()
+
+
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 async def signup(session: AsyncSession, payload, otp_ttl_seconds: int) -> tuple[User, str]:
     async with session.begin():
         await ensure_default_roles(session)
@@ -90,6 +137,24 @@ async def signup(session: AsyncSession, payload, otp_ttl_seconds: int) -> tuple[
     return user, code
 
 
+    # Explanation:
+    # `signup` creates a new `User` row, assigns the `customer` role, and
+    # emits an OTP verification record and email. It runs inside a DB
+    # transaction to ensure atomicity.
+    #
+    # Alternative (commented): separate user creation and OTP issuance into
+    # two steps so the account can be created first and email sending can be
+    # retried independently.
+    #
+    # async def signup_create_user_then_otp(session, payload, otp_ttl_seconds):
+    #     user = User(...)
+    #     session.add(user)
+    #     await session.flush()
+    #     # commit here or return user and handle OTP outside transaction
+    #     return user
+
+
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 async def verify_otp(session: AsyncSession, email: str, otp: str) -> bool:
     async with session.begin():
         user = await session.scalar(select(User).where(User.email == email.lower()))
@@ -112,6 +177,21 @@ async def verify_otp(session: AsyncSession, email: str, otp: str) -> bool:
     return True
 
 
+    # Explanation:
+    # `verify_otp` finds the most recent unused OTP for the user, validates
+    # expiry, marks it used, and flips `user.is_verified`. It raises specific
+    # errors for missing records or expiry.
+    #
+    # Alternative (commented): validate OTPs against a one-time token table
+    # storing hashed OTPs to avoid storing plaintext codes in DB.
+    #
+    # async def verify_otp_hashed(session, email, otp):
+    #     otp_hash = hashlib.sha256(otp.encode()).hexdigest()
+    #     # lookup by hash and validate
+    #     pass
+
+
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 async def resend_otp(session: AsyncSession, email: str, otp_ttl_seconds: int) -> str:
     async with session.begin():
         user = await session.scalar(select(User).where(User.email == email.lower()))
@@ -136,6 +216,15 @@ async def resend_otp(session: AsyncSession, email: str, otp_ttl_seconds: int) ->
     return code
 
 
+    # Explanation:
+    # `resend_otp` issues a fresh OTP and queues an email. Rate limiting and
+    # abuse prevention should be enforced at the service or API layer.
+    #
+    # Alternative (commented): reuse the last unexpired OTP instead of
+    # issuing a new one when within a short window to avoid spamming users.
+
+
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 async def login(session: AsyncSession, email: str, password: str) -> tuple[str, User, list[str]]:
     user = await session.scalar(select(User).where(User.email == email.lower()))
     if not user or not verify_password(password, user.password_hash):
@@ -149,6 +238,16 @@ async def login(session: AsyncSession, email: str, password: str) -> tuple[str, 
     return token, user, roles
 
 
+    # Explanation:
+    # `login` authenticates the user, enforces active/verified flags, fetches
+    # roles, and returns a JWT access token. Error types are raised for
+    # specific failure cases to map to HTTP responses.
+    #
+    # Alternative (commented): implement account lockout on repeated failed
+    # logins using a counter in DB or cache to mitigate brute-force attacks.
+
+
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 async def forgot_password(session: AsyncSession, email: str) -> None:
     async with session.begin():
         user = await session.scalar(select(User).where(User.email == email.lower()))
@@ -164,6 +263,15 @@ async def forgot_password(session: AsyncSession, email: str) -> None:
         )
 
 
+    # Explanation:
+    # `forgot_password` emits a reset token via email if the user exists.
+    # It intentionally does not reveal account existence to callers.
+    #
+    # Alternative (commented): store reset tokens in a `password_resets` table
+    # with hashed tokens for single-use and revocation.
+
+
+# Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
 async def google_login(session: AsyncSession, id_token: str, google_client_id: str) -> tuple[str, "User", list[str]]:
     if not google_client_id:
         raise GoogleNotConfiguredError()
@@ -234,3 +342,11 @@ async def reset_password(session: AsyncSession, token: str, new_password: str) -
             raise NotFoundError("user")
         user.password_hash = hash_password(new_password)
     return True
+
+
+    # Explanation:
+    # `reset_password` decodes a JWT reset token, validates purpose, and
+    # updates the user's hashed password inside a DB transaction.
+    #
+    # Alternative (commented): use DB-backed single-use reset tokens and
+    # delete/mark-used after consumption for stronger revocation semantics.
