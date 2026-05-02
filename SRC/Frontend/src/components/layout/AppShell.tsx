@@ -114,6 +114,7 @@ export function AppShell() {
             {isOrganiser && <NavItem to="/admin">Dashboard</NavItem>}
             {isOrganiser && <NavItem to="/organiser/types">Types</NavItem>}
             {isOrganiser && <NavItem to="/organiser/bookings">Bookings</NavItem>}
+            {isOrganiser && <NavItem to="/organiser/notifications">Notifications</NavItem>}
             {isAdmin && <AdminDropdown />}
           </nav>
 

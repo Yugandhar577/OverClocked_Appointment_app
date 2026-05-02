@@ -31,6 +31,14 @@ services:
       SMTP_HOST: mailhog
       # Override with your real Google OAuth client ID to enable Google sign-in
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      # SMTP auth — leave blank for MailHog (no auth needed)
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-false}
+      # Twilio SMS — leave blank to disable SMS; set in .env for real sends
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_FROM_NUMBER: ${TWILIO_FROM_NUMBER:-}
     ports:
       - "8000:8000"
     volumes:

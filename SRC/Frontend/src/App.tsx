@@ -20,6 +20,7 @@ import { ProfilePage } from "./pages/customer/ProfilePage"
 import { ReschedulePage } from "./pages/customer/ReschedulePage"
 import { AppointmentTypesPage } from "./pages/organiser/AppointmentTypesPage"
 import { NewTypePage } from "./pages/organiser/NewTypePage"
+import { NotificationSettingsPage } from "./pages/organiser/NotificationSettingsPage"
 import { OrganiserBookingsPage } from "./pages/organiser/OrganiserBookingsPage"
 import { HomePage } from "./pages/public/HomePage"
 import { LoginPage } from "./pages/public/LoginPage"
@@ -49,6 +50,7 @@ export function App() {
           <Route path="/organiser/types/new" element={<NewTypePage />} />
           <Route path="/organiser/types/:appointmentTypeId" element={<NewTypePage />} />
           <Route path="/organiser/bookings" element={<OrganiserBookingsPage />} />
+          <Route path="/organiser/notifications" element={<NotificationSettingsPage />} />
         </Route>
         <Route element={<RequireAuth roles={["organiser", "admin"]} />}>
           <Route element={<AdminLayout />}>

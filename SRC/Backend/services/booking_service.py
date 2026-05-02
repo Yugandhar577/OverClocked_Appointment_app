@@ -29,7 +29,7 @@ from SRC.Backend.db.models import (
     WaitlistEntry,
 )
 from SRC.Backend.services import appointment_service
-from SRC.Backend.services.notification_service import queue_email
+from SRC.Backend.services.notification_service import queue_email, queue_notification
 
 LOCK_SLOT_SQL = """SELECT * FROM generated_slots
   WHERE id = :slot_id AND is_blocked = FALSE AND booked_count < max_capacity
@@ -178,13 +178,14 @@ async def create(session: AsyncSession, payload, actor: User) -> tuple[Appointme
                 new_value={"slot_id": str(payload.slot_id), "people_count": payload.people_count, "status": status},
             )
         )
-        queue_email(
+        slot_for_notif = await session.get(GeneratedSlot, payload.slot_id)
+        await queue_notification(
             session,
             event_type="booking_created",
-            appointment_id=appointment.id,
+            appointment=appointment,
+            appointment_type=appointment_type,
+            slot=slot_for_notif,
             recipient_id=actor.id,
-            subject="Booking created",
-            body=f"Booking {appointment.confirmation_code} is {status}.",
         )
 
     slot = await session.get(GeneratedSlot, payload.slot_id)
@@ -327,13 +328,13 @@ async def cancel(session: AsyncSession, booking_id: UUID, actor: User, reason: s
         new_count = max(slot.booked_count - appointment.people_count, 0)
         slot.booked_count = new_count
         session.add(SlotCapacityLog(slot_id=slot.id, appointment_id=appointment.id, delta=-appointment.people_count, new_count=new_count))
-        queue_email(
+        await queue_notification(
             session,
             event_type="booking_cancelled",
-            appointment_id=appointment.id,
+            appointment=appointment,
+            appointment_type=appointment_type,
+            slot=slot,
             recipient_id=appointment.customer_id,
-            subject="Booking cancelled",
-            body=f"Booking {appointment.confirmation_code} was cancelled.",
         )
     return updated
 
@@ -353,13 +354,14 @@ async def confirm(session: AsyncSession, booking_id: UUID, actor: User) -> Appoi
         if appointment_type.organiser_id != actor.id and "admin" not in getattr(actor, "roles_snapshot", []):
             raise NotOwnerError()
         updated = await appointment_service.transition(session, appointment.id, "confirmed", actor)
-        queue_email(
+        slot_for_notif = await session.get(GeneratedSlot, appointment.slot_id)
+        await queue_notification(
             session,
             event_type="booking_confirmed",
-            appointment_id=appointment.id,
+            appointment=appointment,
+            appointment_type=appointment_type,
+            slot=slot_for_notif,
             recipient_id=appointment.customer_id,
-            subject="Booking confirmed",
-            body=f"Booking {appointment.confirmation_code} is confirmed.",
         )
     return updated
 

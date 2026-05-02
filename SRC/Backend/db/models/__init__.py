@@ -1,6 +1,6 @@
 from SRC.Backend.db.base import Base
 from SRC.Backend.db.models.auth import OtpVerification, Role, User, user_roles
-from SRC.Backend.db.models.organization import Organization
+from SRC.Backend.db.models.organization import Organization, OrganizationNotificationSettings
 from SRC.Backend.db.models.booking import Appointment, AppointmentAnswer, SlotCapacityLog
 from SRC.Backend.db.models.comms import AuditLog, Notification, Payment
 from SRC.Backend.db.models.advanced import (
@@ -28,6 +28,7 @@ from SRC.Backend.db.models.scheduling import (
 __all__ = [
     "Base",
     "Organization",
+    "OrganizationNotificationSettings",
     "User",
     "Role",
     "user_roles",

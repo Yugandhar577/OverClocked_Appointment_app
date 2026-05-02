@@ -16,6 +16,13 @@ class Settings(BaseSettings):
     smtp_host: str = "localhost"
     smtp_port: int = 1025
     smtp_from: str = "noreply@appointments.local"
+    smtp_sender_name: str = "OverClocked Appointments"
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_use_tls: bool = False
+    twilio_account_sid: str = ""
+    twilio_auth_token: str = ""
+    twilio_from_number: str = ""
     app_base_url: str = "http://localhost:5173"
     frontend_origin: str = "http://localhost:5173"
     future_days_limit_default: int = 30
