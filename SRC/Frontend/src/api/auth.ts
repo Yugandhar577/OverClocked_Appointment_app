@@ -31,3 +31,8 @@ export async function updateMe(payload: Partial<Pick<User, "full_name" | "phone"
   const res = await api.patch<User>("/auth/me", payload)
   return res.data
 }
+
+export async function googleLogin(idToken: string): Promise<LoginResponse> {
+  const res = await api.post<LoginResponse>("/auth/google", { id_token: idToken })
+  return res.data
+}

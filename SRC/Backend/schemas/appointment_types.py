@@ -6,7 +6,7 @@ Comments in this file are intentionally explicit because the project is used in 
 Keep behavior changes separate from documentation-only edits so reviews can verify no runtime contract changed.
 """
 
-from datetime import time
+from datetime import datetime, time
 from decimal import Decimal
 from uuid import UUID
 
@@ -23,6 +23,8 @@ class AppointmentTypeCreate(BaseModel):
     timezone: str = "Asia/Kolkata"
     future_days_limit: int = Field(default=30, ge=1, le=120)
     venue: str | None = None
+    image_url: str | None = None
+    video_url: str | None = None
 
 
 # Backend note: Input contract used when updating a backend resource.
@@ -36,12 +38,20 @@ class AppointmentTypeUpdate(BaseModel):
     future_days_limit: int = Field(default=30, ge=1, le=120)
     venue: str | None = None
     confirmation_msg: str | None = None
+    image_url: str | None = None
+    video_url: str | None = None
+    booking_email_template: str | None = "Appointment: Attendee Invitation"
+    cancellation_email_template: str | None = "Appointment: Appointment Canceled"
+    reminder_email_hours: int | None = Field(default=3, ge=0, le=168)
+    reminder_sms_hours: int | None = Field(default=1, ge=0, le=168)
 
 
 # Backend note: Input contract used when updating a backend resource.
 class AppointmentTypeUpdateRules(BaseModel):
     requires_confirmation: bool = False
     manage_capacity: bool = True
+    allow_invitations: bool = True
+    display_pictures: bool = False
     is_paid: bool = False
     price: Decimal | None = None
     advance_payment_required: bool = False
@@ -50,15 +60,20 @@ class AppointmentTypeUpdateRules(BaseModel):
     max_per_slot: int = Field(default=1, gt=0)
     future_days_limit: int = Field(default=30, ge=1, le=120)
     assignment_method: str = "auto"
+    starts_with: str = "date"
+    slot_type: str = "weekly"
+    slot_interval_minutes: int | None = Field(default=None, ge=5, le=1440)
 
 
 # Backend note: Input contract used when creating a backend resource.
 class ResourceCreate(BaseModel):
+    id: UUID | None = None
     name: str
     resource_type: str = "human"
     capacity: int = Field(default=1, gt=0)
     timezone: str = "Asia/Kolkata"
     priority: int = 1
+    user_ref_id: UUID | None = None
 
 
 # Backend note: Groups related backend data or behavior for a single domain concept.
@@ -71,6 +86,16 @@ class ResourceOut(BaseModel):
     capacity: int
     timezone: str
     is_active: bool
+    user_ref_id: UUID | None = None
+
+
+class ResourceCandidateOut(BaseModel):
+    id: UUID
+    name: str
+    resource_type: str
+    capacity: int = 1
+    email: str | None = None
+    user_ref_id: UUID | None = None
 
 
 # Backend note: Groups related backend data or behavior for a single domain concept.
@@ -143,14 +168,24 @@ class AppointmentTypeOut(BaseModel):
     currency: str
     requires_confirmation: bool
     manage_capacity: bool
+    allow_invitations: bool
+    display_pictures: bool
     max_capacity: int | None
     future_days_limit: int
+    starts_with: str
     allow_cancel: bool
     cancel_before_minutes: int | None
     allow_reschedule: bool
     reschedule_before_minutes: int | None
     venue: str | None
     confirmation_msg: str | None
+    image_url: str | None
+    video_url: str | None
+    booking_email_template: str | None
+    cancellation_email_template: str | None
+    reminder_email_hours: int | None
+    reminder_sms_hours: int | None
+    slot_interval_minutes: int | None
 
 
 # Backend note: Groups related backend data or behavior for a single domain concept.
@@ -170,3 +205,15 @@ class PublishOut(BaseModel):
     id: UUID
     is_published: bool
     slots_generated: int
+
+
+class ActivityOut(BaseModel):
+    id: UUID
+    action: str
+    actor_name: str | None = None
+    message: str | None = None
+    created_at: datetime
+
+
+class ActivityCreate(BaseModel):
+    message: str = Field(min_length=1, max_length=1000)

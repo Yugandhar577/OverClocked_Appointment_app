@@ -1,21 +1,24 @@
-import { CalendarCheck, CalendarDays, Check, Copy, ImagePlus, Link2, MessageSquare, Package, Plus, Send, Trash2, Users, X } from "lucide-react"
+import { CalendarDays, ImagePlus, Link2, Package, Plus, Send, Trash2, Users, X } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 
 import {
+  addAppointmentNote,
+  appointmentActivity,
   createAppointmentType,
   getAppointmentType,
   publishAppointmentType,
   replaceQuestions,
   replaceResources,
   replaceWorkingHours,
+  resourceCandidates,
   shareLink,
+  sendAppointmentMessage,
   updateAppointmentType,
   updateRules,
 } from "../../api/appointmentTypes"
-import { googleCalendarConnect } from "../../api/advanced"
 import { errorMessage } from "../../api/client"
-import type { AppointmentTypeDetail } from "../../api/types"
+import type { ActivityItem, AppointmentTypeDetail, ResourceCandidate } from "../../api/types"
 import { Button } from "../../components/ui/Button"
 import { Input, Textarea } from "../../components/ui/Field"
 import { Notice } from "../../components/ui/Notice"
@@ -23,9 +26,11 @@ import { Notice } from "../../components/ui/Notice"
 type Tab = "availabilities" | "questions" | "communication" | "options"
 
 interface ResourceDraft {
+  id?: string
   name: string
   capacity: number
   resource_type: string
+  user_ref_id?: string | null
 }
 
 interface HourDraft {
@@ -129,6 +134,19 @@ export function NewTypePage() {
   const [slotEvery, setSlotEvery] = useState(initial.duration)
   const [isPaid, setIsPaid] = useState(false)
   const [price, setPrice] = useState(0)
+  const [imageUrl, setImageUrl] = useState("")
+  const [videoUrl, setVideoUrl] = useState("")
+  const [bookingEmailTemplate, setBookingEmailTemplate] = useState("Appointment: Attendee Invitation")
+  const [cancellationEmailTemplate, setCancellationEmailTemplate] = useState("Appointment: Appointment Canceled")
+  const [reminderEmailHours, setReminderEmailHours] = useState(3)
+  const [reminderSmsHours, setReminderSmsHours] = useState(1)
+  const [resourceName, setResourceName] = useState("")
+  const [resourceCapacity, setResourceCapacity] = useState(1)
+  const [resourceCandidatesList, setResourceCandidatesList] = useState<ResourceCandidate[]>([])
+  const [activityItems, setActivityItems] = useState<ActivityItem[]>([])
+  const [composerMode, setComposerMode] = useState<"message" | "note" | null>(null)
+  const [composerText, setComposerText] = useState("")
+  const [postingActivity, setPostingActivity] = useState(false)
 
   const totalResourceCapacity = useMemo(() => resources.reduce((sum, resource) => sum + Number(resource.capacity || 0), 0), [resources])
   const displayCapacity = manageCapacity ? Math.max(1, capacity || totalResourceCapacity || 1) : 1
@@ -139,6 +157,17 @@ export function NewTypePage() {
       .then((detail) => hydrate(detail))
       .catch((err) => setMessage(errorMessage(err)))
       .finally(() => setLoading(false))
+  }, [appointmentTypeId])
+
+  useEffect(() => {
+    resourceCandidates(bookBy === "user" ? "user" : "resource")
+      .then(setResourceCandidatesList)
+      .catch(() => setResourceCandidatesList([]))
+  }, [bookBy])
+
+  useEffect(() => {
+    if (!appointmentTypeId) return
+    loadActivity()
   }, [appointmentTypeId])
 
   function hydrate(detail: AppointmentTypeDetail) {
@@ -152,17 +181,29 @@ export function NewTypePage() {
     setTimezone(detail.timezone)
     setBookBy(detail.resource_type)
     setAssignment(detail.assignment_method || "auto")
+    setStartsWith(detail.starts_with || "date")
     setManageCapacity(detail.manage_capacity)
     setCapacity(detail.max_capacity || 1)
     setRequiresConfirmation(detail.requires_confirmation)
+    setAllowInvitations(detail.allow_invitations)
+    setDisplayPictures(detail.display_pictures)
     setFutureDays(detail.future_days_limit)
     setCancelBefore(detail.cancel_before_minutes || 60)
+    setSlotEvery(detail.slot_interval_minutes || detail.duration_minutes)
     setIsPaid(detail.is_paid)
     setPrice(Number(detail.price || 0))
+    setImageUrl(detail.image_url || "")
+    setVideoUrl(detail.video_url || "")
+    setBookingEmailTemplate(detail.booking_email_template || "Appointment: Attendee Invitation")
+    setCancellationEmailTemplate(detail.cancellation_email_template || "Appointment: Appointment Canceled")
+    setReminderEmailHours(detail.reminder_email_hours ?? 3)
+    setReminderSmsHours(detail.reminder_sms_hours ?? 1)
     setResources(detail.resources.length ? detail.resources.map((resource) => ({
+      id: resource.id,
       name: resource.name,
       capacity: resource.capacity,
       resource_type: resource.resource_type,
+      user_ref_id: resource.user_ref_id,
     })) : presetDefaults.meeting.resources)
     setHours(detail.working_hours.length ? detail.working_hours.map((hour) => ({
       day_of_week: hour.day_of_week,
@@ -205,6 +246,12 @@ export function NewTypePage() {
         future_days_limit: futureDays,
         venue,
         confirmation_msg: confirmationMsg,
+        image_url: imageUrl,
+        video_url: videoUrl,
+        booking_email_template: bookingEmailTemplate,
+        cancellation_email_template: cancellationEmailTemplate,
+        reminder_email_hours: reminderEmailHours,
+        reminder_sms_hours: reminderSmsHours,
       }
       const id = appointmentTypeId
         ? (await updateAppointmentType(appointmentTypeId, payload)).id
@@ -214,6 +261,8 @@ export function NewTypePage() {
         name: resource.name,
         capacity: Math.max(1, Number(resource.capacity || 1)),
         resource_type: resource.resource_type || "room",
+        id: resource.id,
+        user_ref_id: resource.user_ref_id,
       })))
       await replaceWorkingHours(id, hours.map((hour) => ({
         day_of_week: hour.day_of_week,
@@ -237,6 +286,11 @@ export function NewTypePage() {
         max_per_slot: displayCapacity,
         future_days_limit: futureDays,
         assignment_method: assignment,
+        allow_invitations: allowInvitations,
+        display_pictures: displayPictures,
+        starts_with: startsWith,
+        slot_type: "weekly",
+        slot_interval_minutes: slotEvery,
       })
 
       if (publish) {
@@ -249,11 +303,19 @@ export function NewTypePage() {
         setMessage("Appointment type saved.")
       }
       if (!appointmentTypeId) navigate(`/organiser/types/${id}`, { replace: true })
+      if (appointmentTypeId) loadActivity()
     } catch (err) {
       setMessage(errorMessage(err))
     } finally {
       setSaving(false)
     }
+  }
+
+  function loadActivity() {
+    if (!appointmentTypeId) return
+    appointmentActivity(appointmentTypeId)
+      .then(setActivityItems)
+      .catch(() => setActivityItems([]))
   }
 
   async function copyShareLink() {
@@ -271,9 +333,85 @@ export function NewTypePage() {
     }
   }
 
-  async function openGoogleCalendar() {
-    const response = await googleCalendarConnect()
-    window.open(response.auth_url, "_blank", "noopener,noreferrer")
+  function addTypedResource() {
+    const name = resourceName.trim()
+    if (!name) {
+      setMessage(`Enter a ${bookBy === "user" ? "user" : "resource"} name first.`)
+      return
+    }
+    setResources([
+      ...resources,
+      {
+        name,
+        capacity: Math.max(1, resourceCapacity),
+        resource_type: bookBy === "user" ? "human" : "room",
+      },
+    ])
+    setResourceName("")
+    setResourceCapacity(1)
+  }
+
+  function addCandidate(candidateId: string) {
+    const candidate = resourceCandidatesList.find((item) => item.id === candidateId)
+    if (!candidate || resources.some((resource) => resource.user_ref_id === candidate.user_ref_id || resource.id === candidate.id)) return
+    setResources([
+      ...resources,
+      {
+        id: candidate.user_ref_id ? undefined : candidate.id,
+        name: candidate.name,
+        capacity: Math.max(1, candidate.capacity || 1),
+        resource_type: candidate.resource_type,
+        user_ref_id: candidate.user_ref_id,
+      },
+    ])
+  }
+
+  function updateResource(index: number, patch: Partial<ResourceDraft>) {
+    setResources(resources.map((resource, resourceIndex) => (resourceIndex === index ? { ...resource, ...patch } : resource)))
+  }
+
+  function handleImageFile(file?: File) {
+    if (!file) return
+    if (!file.type.startsWith("image/")) {
+      setMessage("Choose an image file.")
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => setImageUrl(String(reader.result || ""))
+    reader.readAsDataURL(file)
+  }
+
+  function addVideoUrl() {
+    const value = window.prompt("Video meeting URL", videoUrl)
+    if (value !== null) setVideoUrl(value.trim())
+  }
+
+  function openActivityComposer(kind: "message" | "note") {
+    if (!appointmentTypeId) {
+      setMessage("Save the appointment type before using activity.")
+      return
+    }
+    setComposerMode(kind)
+    setComposerText("")
+  }
+
+  async function submitActivity() {
+    if (!appointmentTypeId || !composerMode || !composerText.trim()) return
+    setPostingActivity(true)
+    try {
+      const item =
+        composerMode === "message"
+          ? await sendAppointmentMessage(appointmentTypeId, composerText.trim())
+          : await addAppointmentNote(appointmentTypeId, composerText.trim())
+      setActivityItems([item, ...activityItems])
+      setMessage(composerMode === "message" ? "Message queued and logged." : "Note logged.")
+      setComposerMode(null)
+      setComposerText("")
+    } catch (err) {
+      setMessage(errorMessage(err))
+    } finally {
+      setPostingActivity(false)
+    }
   }
 
   if (loading) return <Notice>Loading appointment type...</Notice>
@@ -322,11 +460,7 @@ export function NewTypePage() {
         <div className="grid lg:grid-cols-[minmax(0,1fr)_340px]">
           <div className="grid gap-6 p-5">
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.9fr)]">
-              <section className="grid gap-5 rounded-md border border-line bg-white p-5 shadow-sm">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-neutral-500">Basics</p>
-                  <h2 className="text-lg font-bold text-ink">Appointment details</h2>
-                </div>
+              <section className="grid gap-5">
                 <label className="grid gap-2">
                   <span className="text-sm font-bold text-ink">Appointment Title</span>
                   <input
@@ -343,42 +477,61 @@ export function NewTypePage() {
                 </TwoColumn>
                 <TwoColumn label="Location">
                   <Textarea value={venue} onChange={(event) => setVenue(event.target.value)} className="min-h-20" />
-                  <button type="button" className="mt-2 inline-flex items-center gap-2 text-sm font-bold text-signal">
+                  <button type="button" onClick={addVideoUrl} className="mt-2 inline-flex items-center gap-2 text-sm font-bold text-signal">
                     <Plus size={16} />
-                    Add Video
+                    {videoUrl ? "Change Video" : "Add Video"}
                   </button>
+                  {videoUrl && <p className="mt-1 max-w-sm truncate text-xs text-neutral-600">{videoUrl}</p>}
                 </TwoColumn>
               </section>
 
-              <section className="grid content-start gap-4 rounded-md border border-line bg-white p-5 shadow-sm">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-wider text-neutral-500">Assignment</p>
-                    <h2 className="text-lg font-bold text-ink">Staff and resources</h2>
-                  </div>
-                  <div className="grid h-20 w-20 shrink-0 place-items-center rounded-md border border-line bg-paper text-neutral-400">
-                    <ImagePlus size={42} />
-                  </div>
-                </div>
+              <section className="grid content-start gap-4">
+                <label className="ml-auto grid h-28 w-28 cursor-pointer place-items-center overflow-hidden border border-line bg-white text-neutral-400">
+                  {imageUrl ? <img src={imageUrl} alt="" className="h-full w-full object-cover" /> : <ImagePlus size={58} />}
+                  <input type="file" accept="image/*" className="hidden" onChange={(event) => handleImageFile(event.target.files?.[0])} />
+                </label>
                 <TwoColumn label="Book">
                   <RadioRow value={bookBy} onChange={setBookBy} options={[["user", "Users"], ["resource", "Resources"]]} />
                 </TwoColumn>
-                <TwoColumn label="Resources">
-                  <div className="flex flex-wrap gap-2">
+                <div className="grid gap-2">
+                  <strong className="text-sm text-ink">{bookBy === "user" ? "Users" : "Resources"}</strong>
+                  <div className="grid max-w-full gap-3">
+                    {bookBy === "user" && (
+                      <select
+                        className="h-10 w-full min-w-0 rounded-md border border-line bg-white px-3 text-sm"
+                        value=""
+                        onChange={(event) => addCandidate(event.target.value)}
+                      >
+                        <option value="">Choose from company individuals...</option>
+                        {resourceCandidatesList.map((candidate) => (
+                          <option key={candidate.id} value={candidate.id}>
+                            {candidate.name}{candidate.email ? ` (${candidate.email})` : ""}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                     {resources.map((resource, index) => (
-                      <span key={`${resource.name}-${index}`} className="inline-flex items-center gap-1 rounded-full bg-[#e9dfdf] px-3 py-1 text-sm font-semibold text-ink">
-                        {resource.name}
-                        {manageCapacity && ` (${resource.capacity})`}
-                        <button type="button" onClick={() => setResources(resources.filter((_item, resourceIndex) => resourceIndex !== index))} aria-label={`Remove ${resource.name}`}>
-                          <X size={14} />
+                      <div key={`${resource.id || resource.user_ref_id || resource.name}-${index}`} className="grid max-w-full gap-2 rounded-md border border-line bg-white p-2 md:grid-cols-[minmax(0,1fr)_84px_36px] md:items-center">
+                        <Input value={resource.name} onChange={(event) => updateResource(index, { name: event.target.value })} aria-label={`${bookBy === "user" ? "User" : "Resource"} name`} />
+                        <Input type="number" min={1} value={resource.capacity} onChange={(event) => updateResource(index, { capacity: Number(event.target.value) })} aria-label="Capacity" />
+                        <button type="button" onClick={() => setResources(resources.filter((_item, resourceIndex) => resourceIndex !== index))} className="grid h-9 w-9 place-items-center rounded-md text-warn hover:bg-red-50" aria-label={`Remove ${resource.name}`}>
+                          <Trash2 size={16} />
                         </button>
-                      </span>
+                      </div>
                     ))}
-                    <button type="button" onClick={() => setResources([...resources, { name: `Resource ${resources.length + 1}`, capacity: 1, resource_type: bookBy === "user" ? "human" : "room" }])} className="text-sm font-bold text-signal">
-                      Add
-                    </button>
+                    <div className="grid max-w-full gap-2 md:grid-cols-[minmax(0,1fr)_84px_auto]">
+                      <Input
+                        value={resourceName}
+                        onChange={(event) => setResourceName(event.target.value)}
+                        placeholder={bookBy === "user" ? "Add user name..." : "Add resource name..."}
+                      />
+                      <Input type="number" min={1} value={resourceCapacity} onChange={(event) => setResourceCapacity(Number(event.target.value))} />
+                      <Button type="button" variant="secondary" onClick={addTypedResource}>
+                        Add
+                      </Button>
+                    </div>
                   </div>
-                </TwoColumn>
+                </div>
                 <TwoColumn label="Assignment ?">
                   <RadioRow value={assignment} onChange={setAssignment} options={[["auto", "Automatically"], ["visitor", "By visitor"]]} />
                 </TwoColumn>
@@ -462,13 +615,21 @@ export function NewTypePage() {
                     <section className="grid content-start gap-5">
                       <h3 className="border-b border-line pb-2 text-sm font-bold uppercase">Emails & SMS</h3>
                       <TwoColumn label="Reminders">
-                        <div className="flex flex-wrap gap-2">
-                          <Pill>Email - 3 Hours</Pill>
-                          <Pill>SMS Text Message - 1 Hours</Pill>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span>Email</span>
+                          <Input type="number" min={0} max={168} value={reminderEmailHours} onChange={(event) => setReminderEmailHours(Number(event.target.value))} className="w-20" />
+                          <span>hours</span>
+                          <span>SMS</span>
+                          <Input type="number" min={0} max={168} value={reminderSmsHours} onChange={(event) => setReminderSmsHours(Number(event.target.value))} className="w-20" />
+                          <span>hours</span>
                         </div>
                       </TwoColumn>
-                      <TwoColumn label="Booking Email ?">Appointment: Attendee Invitation</TwoColumn>
-                      <TwoColumn label="Cancellation Email ?">Appointment: Appointment Canceled</TwoColumn>
+                      <TwoColumn label="Booking Email ?">
+                        <Input value={bookingEmailTemplate} onChange={(event) => setBookingEmailTemplate(event.target.value)} />
+                      </TwoColumn>
+                      <TwoColumn label="Cancellation Email ?">
+                        <Input value={cancellationEmailTemplate} onChange={(event) => setCancellationEmailTemplate(event.target.value)} />
+                      </TwoColumn>
                     </section>
                   </div>
                 )}
@@ -518,37 +679,56 @@ export function NewTypePage() {
 
           <aside className="border-t border-line bg-[#f6f7f8] p-5 lg:border-l lg:border-t-0">
             <div className="flex flex-wrap gap-2">
-              <Button type="button"><Send size={16} />Send message</Button>
-              <Button type="button" variant="secondary">Log note</Button>
-              <Button type="button" variant="secondary">Activity</Button>
+              <Button type="button" onClick={() => openActivityComposer("message")}><Send size={16} />Send message</Button>
+              <Button type="button" variant="secondary" onClick={() => openActivityComposer("note")}>Log note</Button>
+              <Button type="button" variant="secondary" onClick={loadActivity}>Activity</Button>
             </div>
-            <div className="mt-5 rounded-md border border-line bg-white p-4 shadow-sm">
-              <div className="flex items-start gap-3">
-                <span className="grid h-10 w-10 place-items-center rounded-md bg-green-50 text-green-700">
-                  <CalendarCheck size={18} />
-                </span>
-                <div>
-                  <h3 className="font-bold text-ink">Google Calendar</h3>
-                  <p className="mt-1 text-sm text-neutral-600">Open the organiser calendar while configuring availability.</p>
+            {composerMode && (
+              <div className="mt-3 grid gap-2 rounded-md border border-line bg-white p-3">
+                <label className="text-sm font-bold text-ink">{composerMode === "message" ? "Send message" : "Log note"}</label>
+                <Textarea
+                  value={composerText}
+                  onChange={(event) => setComposerText(event.target.value)}
+                  placeholder={composerMode === "message" ? "Write a message..." : "Write an internal note..."}
+                  className="min-h-24"
+                />
+                <div className="flex justify-end gap-2">
+                  <Button type="button" variant="ghost" onClick={() => setComposerMode(null)}>Cancel</Button>
+                  <Button type="button" onClick={submitActivity} disabled={postingActivity || !composerText.trim()}>
+                    {composerMode === "message" ? "Send" : "Log"}
+                  </Button>
                 </div>
               </div>
-              <Button type="button" variant="secondary" className="mt-4 w-full" onClick={openGoogleCalendar}>
-                <CalendarDays size={16} />
-                View calendar
-              </Button>
-            </div>
+            )}
             <div className="my-8 flex items-center gap-3 text-sm text-neutral-500">
               <span className="h-px flex-1 bg-line"></span>
               Today
               <span className="h-px flex-1 bg-line"></span>
             </div>
-            <div className="flex gap-3">
-              <span className="grid h-10 w-10 place-items-center rounded-md bg-ink text-paper">P</span>
-              <p className="text-sm">
-                <strong>Organiser</strong> <span className="text-neutral-500">now</span>
-                <br />
-                Appointment Type {appointmentTypeId ? "configured" : "draft ready"}
-              </p>
+            <div className="grid gap-4">
+              {activityItems.length === 0 && (
+                <div className="flex gap-3">
+                  <span className="grid h-10 w-10 place-items-center rounded-md bg-ink text-paper">P</span>
+                  <p className="text-sm">
+                    <strong>Organiser</strong> <span className="text-neutral-500">now</span>
+                    <br />
+                    Appointment Type {appointmentTypeId ? "configured" : "draft ready"}
+                  </p>
+                </div>
+              )}
+              {activityItems.map((item) => (
+                <div key={item.id} className="flex gap-3">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-ink text-paper">
+                    {(item.actor_name || "O").slice(0, 1)}
+                  </span>
+                  <p className="text-sm">
+                    <strong>{item.actor_name || "Organiser"}</strong>{" "}
+                    <span className="text-neutral-500">{new Date(item.created_at).toLocaleString()}</span>
+                    <br />
+                    {activityLabel(item)}
+                  </p>
+                </div>
+              ))}
             </div>
           </aside>
         </div>
@@ -597,7 +777,7 @@ function Counter({ icon, label, value }: { icon: React.ReactNode; label: string;
 
 function TwoColumn({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="grid gap-3 rounded-md border border-line bg-paper/60 p-3 sm:grid-cols-[150px_minmax(0,1fr)]">
+    <div className="grid gap-3 sm:grid-cols-[160px_minmax(0,1fr)]">
       <strong className="text-sm text-ink">{label}</strong>
       <div className="min-w-0 text-sm text-ink">{children}</div>
     </div>
@@ -606,15 +786,10 @@ function TwoColumn({ label, children }: { label: string; children: React.ReactNo
 
 function RadioRow({ value, onChange, options }: { value: string; onChange: (value: string) => void; options: Array<[string, string]> }) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap gap-4">
       {options.map(([optionValue, label]) => (
-        <label
-          key={optionValue}
-          className={`inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 font-semibold transition ${
-            value === optionValue ? "border-ink bg-ink text-paper" : "border-line bg-white text-ink hover:border-signal"
-          }`}
-        >
-          <input className="sr-only" type="radio" checked={value === optionValue} onChange={() => onChange(optionValue)} />
+        <label key={optionValue} className="inline-flex items-center gap-2">
+          <input type="radio" checked={value === optionValue} onChange={() => onChange(optionValue)} />
           {label}
         </label>
       ))}
@@ -656,8 +831,17 @@ function EditableTable({ headers, addLabel, onAdd, children }: { headers: string
   )
 }
 
-function Pill({ children }: { children: React.ReactNode }) {
-  return <span className="rounded-full bg-[#e9dfdf] px-3 py-1 text-sm font-semibold">{children}</span>
+function activityLabel(item: ActivityItem) {
+  if (item.message) return item.message
+  const labels: Record<string, string> = {
+    appointment_type_created: "Appointment Type created",
+    appointment_type_updated: "Appointment Type configured",
+    appointment_type_resources_updated: "Resources updated",
+    appointment_type_rules_updated: "Options updated",
+    note_added: "Note logged",
+    message_sent: "Message sent",
+  }
+  return labels[item.action] || item.action.replaceAll("_", " ")
 }
 
 function CheckboxLine({ label, checked, onChange, children }: { label: string; checked: boolean; onChange: (checked: boolean) => void; children?: React.ReactNode }) {

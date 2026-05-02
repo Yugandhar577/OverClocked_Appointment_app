@@ -15,6 +15,7 @@ from SRC.Backend.db.models import User
 from SRC.Backend.db.session import get_db
 from SRC.Backend.schemas.auth import (
     ForgotPasswordRequest,
+    GoogleAuthRequest,
     LoginRequest,
     MeUpdateRequest,
     ResendOtpRequest,
@@ -141,6 +142,28 @@ async def login(payload: LoginRequest, session: AsyncSession = Depends(get_db)):
 
 
 # Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
+@router.post("/google", response_model=TokenResponse)
+async def google_auth(
+    payload: GoogleAuthRequest,
+    session: AsyncSession = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+):
+    token, user, roles = await auth_service.google_login(session, payload.id_token, settings.google_client_id)
+    return TokenResponse(
+        access_token=token,
+        user=UserOut(
+            id=user.id,
+            email=user.email,
+            full_name=user.full_name,
+            roles=roles,
+            is_verified=user.is_verified,
+            is_active=user.is_active,
+            phone=user.phone,
+            timezone=user.timezone,
+        ),
+    )
+
+
 @router.post("/forgot-password")
 async def forgot_password(payload: ForgotPasswordRequest, session: AsyncSession = Depends(get_db)):
     await auth_service.forgot_password(session, payload.email)
