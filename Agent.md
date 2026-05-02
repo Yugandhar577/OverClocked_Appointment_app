@@ -196,6 +196,11 @@ Update this section at the end of each work block. Format: `YYYY-MM-DD HH:MM | d
 | Timestamp | Dev | Status |
 |---|---|---|
 | 2026-05-02 | Setup | Repo bootstrapped; PRD + Context files written; ready for hour-0 build start |
+| 2026-05-02 12:15 | Codex | MVP scaffold created: FastAPI backend, 18-table SQLAlchemy schema, Alembic migration, seed script, React/Vite frontend, Docker Compose, and initial tests |
+| 2026-05-02 12:34 | Codex | Restored Documentation from origin/main; started isolated Docker Postgres on localhost:5433; migrated, seeded, and restarted backend successfully |
+| 2026-05-02 12:37 | Codex | Switched backend to local PostgreSQL on localhost:5432 via ignored .env; migrated, seeded, restarted, and verified health/login |
+| 2026-05-02 12:49 | Codex | Improved frontend flow: role-aware login redirects, richer navigation, booking readiness states, organiser type overview, and safer customer appointment actions |
+| 2026-05-02 12:58 | Codex | Fixed booking empty-state flow by auto-selecting next available date; verified full customer booking reaches confirmation |
 | | | |
 
 ---
