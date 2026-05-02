@@ -7,6 +7,8 @@ from SRC.Backend.core.deps import get_current_user, require_role
 from SRC.Backend.db.models import User
 from SRC.Backend.db.session import get_db
 from SRC.Backend.schemas.appointment_types import (
+    ActivityCreate,
+    ActivityOut,
     AppointmentTypeCreate,
     AppointmentTypeDetail,
     AppointmentTypeListItem,
@@ -15,6 +17,7 @@ from SRC.Backend.schemas.appointment_types import (
     AppointmentTypeUpdateRules,
     PublishOut,
     QuestionIn,
+    ResourceCandidateOut,
     ResourceCreate,
     ResourceOut,
     ShareLinkOut,
@@ -83,6 +86,15 @@ async def update_appointment_type(
     session: AsyncSession = Depends(get_db),
 ):
     return await appointment_type_service.update_details(session, appointment_type_id, payload, current_user)
+
+
+@router.get("/configure/resource-candidates", response_model=list[ResourceCandidateOut])
+async def resource_candidates(
+    mode: str = Query(default="resource"),
+    current_user: User = Depends(require_role("organiser", "admin")),
+    session: AsyncSession = Depends(get_db),
+):
+    return await appointment_type_service.resource_candidates(session, current_user, mode)
 
 
 @router.get("/{appointment_type_id}/resources", response_model=list[ResourceOut])
@@ -160,6 +172,35 @@ async def unpublish(
     session: AsyncSession = Depends(get_db),
 ):
     return await appointment_type_service.unpublish(session, appointment_type_id, current_user)
+
+
+@router.get("/{appointment_type_id}/activity", response_model=list[ActivityOut])
+async def activity(
+    appointment_type_id: UUID,
+    current_user: User = Depends(require_role("organiser", "admin")),
+    session: AsyncSession = Depends(get_db),
+):
+    return await appointment_type_service.activity(session, appointment_type_id, current_user)
+
+
+@router.post("/{appointment_type_id}/notes", response_model=ActivityOut, status_code=status.HTTP_201_CREATED)
+async def add_note(
+    appointment_type_id: UUID,
+    payload: ActivityCreate,
+    current_user: User = Depends(require_role("organiser", "admin")),
+    session: AsyncSession = Depends(get_db),
+):
+    return await appointment_type_service.add_note(session, appointment_type_id, payload.message, current_user)
+
+
+@router.post("/{appointment_type_id}/messages", response_model=ActivityOut, status_code=status.HTTP_201_CREATED)
+async def send_message(
+    appointment_type_id: UUID,
+    payload: ActivityCreate,
+    current_user: User = Depends(require_role("organiser", "admin")),
+    session: AsyncSession = Depends(get_db),
+):
+    return await appointment_type_service.send_message(session, appointment_type_id, payload.message, current_user)
 
 
 @router.get("/{appointment_type_id}/share-link", response_model=ShareLinkOut)

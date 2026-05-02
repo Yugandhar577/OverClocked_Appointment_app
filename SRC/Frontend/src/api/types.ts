@@ -33,6 +33,16 @@ export interface Resource {
   capacity: number
   timezone: string
   is_active: boolean
+  user_ref_id?: string | null
+}
+
+export interface ResourceCandidate {
+  id: string
+  name: string
+  resource_type: string
+  capacity: number
+  email?: string | null
+  user_ref_id?: string | null
 }
 
 export interface WorkingHour {
@@ -69,17 +79,35 @@ export interface AppointmentTypeDetail {
   currency: string
   requires_confirmation: boolean
   manage_capacity: boolean
+  allow_invitations: boolean
+  display_pictures: boolean
   max_capacity?: number | null
   future_days_limit: number
+  starts_with: string
   allow_cancel: boolean
   cancel_before_minutes?: number | null
   allow_reschedule: boolean
   reschedule_before_minutes?: number | null
   venue?: string | null
   confirmation_msg?: string | null
+  image_url?: string | null
+  video_url?: string | null
+  booking_email_template?: string | null
+  cancellation_email_template?: string | null
+  reminder_email_hours?: number | null
+  reminder_sms_hours?: number | null
+  slot_interval_minutes?: number | null
   resources: Resource[]
   questions: Question[]
   working_hours: WorkingHour[]
+}
+
+export interface ActivityItem {
+  id: string
+  action: string
+  actor_name?: string | null
+  message?: string | null
+  created_at: string
 }
 
 export interface AvailabilitySlot {
