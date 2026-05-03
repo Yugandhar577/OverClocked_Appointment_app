@@ -1,4 +1,4 @@
-import { CalendarCheck, RefreshCcw } from "lucide-react"
+import { CalendarCheck, CalendarPlus, RefreshCcw } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Link, useParams } from "react-router-dom"
 
@@ -9,6 +9,26 @@ import { Button } from "../../components/ui/Button"
 import { Notice } from "../../components/ui/Notice"
 import { StatusBadge } from "../../components/ui/StatusBadge"
 import { formatDateTime } from "../../lib/format"
+
+function googleCalendarUrl(booking: Booking): string {
+  const title = encodeURIComponent(booking.appointment_title ?? "Appointment")
+  const location = encodeURIComponent(booking.venue ?? "")
+
+  function toGcalDateTime(iso: string | null | undefined) {
+    if (!iso) return ""
+    return new Date(iso).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "")
+  }
+
+  const start = toGcalDateTime(booking.slot_start)
+  const end = toGcalDateTime(booking.slot_end)
+  const dates = start && end ? `${start}/${end}` : start
+
+  const details = encodeURIComponent(
+    `Booking reference: ${booking.confirmation_code}\nPeople: ${booking.people_count}`,
+  )
+
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dates}&details=${details}&location=${location}`
+}
 
 export function ConfirmationPage() {
   const { bookingId } = useParams()
@@ -24,6 +44,8 @@ export function ConfirmationPage() {
 
   if (error) return <Notice tone="error">{error}</Notice>
   if (!booking) return <Notice>Loading confirmation...</Notice>
+
+  const canAddToCalendar = ["pending", "confirmed"].includes(booking.status) && Boolean(booking.slot_start)
 
   return (
     <div className="mx-auto max-w-2xl rounded-md border border-line bg-paper p-6 shadow-panel">
@@ -48,6 +70,14 @@ export function ConfirmationPage() {
         <Link to="/me/appointments">
           <Button>My appointments</Button>
         </Link>
+        {canAddToCalendar && (
+          <a href={googleCalendarUrl(booking)} target="_blank" rel="noopener noreferrer">
+            <Button variant="secondary">
+              <CalendarPlus size={17} />
+              Add to Google Calendar
+            </Button>
+          </a>
+        )}
         {["pending", "confirmed"].includes(booking.status) && (
           <Link to={`/booking/${booking.id}/reschedule`}>
             <Button variant="secondary">

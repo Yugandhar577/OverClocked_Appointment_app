@@ -9,7 +9,7 @@ Keep behavior changes separate from documentation-only edits so reviews can veri
 from datetime import date, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from SRC.Backend.core.deps import get_current_user, require_role
@@ -26,6 +26,7 @@ from SRC.Backend.schemas.bookings import (
 )
 from SRC.Backend.schemas.common import Paginated
 from SRC.Backend.services import booking_service
+from SRC.Backend.services.email_delivery import deliver_queued_notifications_for_appointment
 
 router = APIRouter(tags=["bookings"])
 
@@ -64,10 +65,12 @@ async def availability(
 @router.post("/bookings", response_model=BookingCreateResponse, status_code=status.HTTP_201_CREATED)
 async def create_booking(
     payload: BookingCreate,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(require_role("customer", "admin")),
     session: AsyncSession = Depends(get_db),
 ):
     appointment, slot, appointment_type, organiser_name = await booking_service.create(session, payload, current_user)
+    background_tasks.add_task(deliver_queued_notifications_for_appointment, appointment.id, "booking_created")
     return BookingCreateResponse(
         booking_id=appointment.id,
         status=appointment.status,
@@ -121,11 +124,13 @@ async def get_booking(
 @router.patch("/bookings/{booking_id}/cancel", response_model=BookingOut)
 async def cancel_booking(
     booking_id: UUID,
+    background_tasks: BackgroundTasks,
     payload: CancelRequest | None = None,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db),
 ):
     appointment = await booking_service.cancel(session, booking_id, current_user, payload.reason if payload else None)
+    background_tasks.add_task(deliver_queued_notifications_for_appointment, appointment.id, "booking_cancelled")
     return await booking_service.get_booking_detail(session, appointment.id, current_user)
 
 
@@ -170,10 +175,12 @@ async def reschedule_booking(
 @router.patch("/bookings/{booking_id}/confirm", response_model=BookingOut)
 async def confirm_booking(
     booking_id: UUID,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(require_role("organiser", "admin")),
     session: AsyncSession = Depends(get_db),
 ):
     appointment = await booking_service.confirm(session, booking_id, current_user)
+    background_tasks.add_task(deliver_queued_notifications_for_appointment, appointment.id, "booking_confirmed")
     return await booking_service.get_booking_detail(session, appointment.id, current_user)
 
 
@@ -251,11 +258,13 @@ async def organiser_bookings(
 @router.patch("/organiser/bookings/{booking_id}/cancel", response_model=BookingOut)
 async def organiser_cancel_booking(
     booking_id: UUID,
+    background_tasks: BackgroundTasks,
     payload: CancelRequest | None = None,
     current_user: User = Depends(require_role("organiser", "admin")),
     session: AsyncSession = Depends(get_db),
 ):
     appointment = await booking_service.cancel(session, booking_id, current_user, payload.reason if payload else None, bypass_window=True)
+    background_tasks.add_task(deliver_queued_notifications_for_appointment, appointment.id, "booking_cancelled")
     return await booking_service.get_booking_detail(session, appointment.id, current_user)
 
 

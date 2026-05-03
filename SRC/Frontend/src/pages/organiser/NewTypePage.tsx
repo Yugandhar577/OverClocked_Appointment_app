@@ -49,20 +49,29 @@ interface QuestionDraft {
 
 const dayNames = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
+const EMAIL_QUESTION: QuestionDraft = { label: "Email Address", question_type: "email", required: true, optionsText: "" }
+
+function withEmailQuestion(questions: QuestionDraft[]): QuestionDraft[] {
+  const hasEmail = questions.some(
+    (q) => q.question_type === "email" || q.label.trim().toLowerCase() === "email address",
+  )
+  return hasEmail ? questions : [EMAIL_QUESTION, ...questions]
+}
+
 const presetDefaults: Record<string, { title: string; duration: number; resourceType: string; resources: ResourceDraft[]; questions: QuestionDraft[] }> = {
   meeting: {
     title: "Meeting",
     duration: 30,
     resourceType: "user",
     resources: [{ name: "Primary organiser", capacity: 1, resource_type: "human" }],
-    questions: [{ label: "Phone number", question_type: "phone", required: true, optionsText: "" }],
+    questions: [EMAIL_QUESTION, { label: "Phone number", question_type: "phone", required: true, optionsText: "" }],
   },
   video_call: {
     title: "Video Call",
     duration: 45,
     resourceType: "user",
     resources: [{ name: "Video host", capacity: 1, resource_type: "human" }],
-    questions: [{ label: "Agenda", question_type: "text", required: false, optionsText: "" }],
+    questions: [EMAIL_QUESTION, { label: "Agenda", question_type: "text", required: false, optionsText: "" }],
   },
   table_booking: {
     title: "Table",
@@ -74,7 +83,7 @@ const presetDefaults: Record<string, { title: string; duration: number; resource
       { name: "Table 3", capacity: 4, resource_type: "room" },
       { name: "Table 4", capacity: 6, resource_type: "room" },
     ],
-    questions: [{ label: "Phone number", question_type: "phone", required: true, optionsText: "" }],
+    questions: [EMAIL_QUESTION, { label: "Phone number", question_type: "phone", required: true, optionsText: "" }],
   },
   resource: {
     title: "Book a Resource",
@@ -86,7 +95,7 @@ const presetDefaults: Record<string, { title: string; duration: number; resource
       { name: "Resource 3", capacity: 1, resource_type: "room" },
       { name: "Resource 4", capacity: 1, resource_type: "room" },
     ],
-    questions: [{ label: "Phone number", question_type: "phone", required: true, optionsText: "" }],
+    questions: [EMAIL_QUESTION, { label: "Phone number", question_type: "phone", required: true, optionsText: "" }],
   },
 }
 
@@ -225,12 +234,13 @@ export function NewTypePage() {
       start_time: hour.start_time.slice(0, 5),
       end_time: hour.end_time.slice(0, 5),
     })) : baseHours)
-    setQuestions(detail.questions.length ? detail.questions.map((question) => ({
+    const loadedQuestions = detail.questions.map((question) => ({
       label: question.question_text,
       question_type: question.answer_type,
       required: question.is_mandatory,
       optionsText: Array.isArray(question.options) ? question.options.join(", ") : "",
-    })) : presetDefaults.meeting.questions)
+    }))
+    setQuestions(withEmailQuestion(detail.questions.length ? loadedQuestions : presetDefaults.meeting.questions))
   }
 
   function choosePreset(nextPreset: string) {
@@ -242,7 +252,7 @@ export function NewTypePage() {
     setBookBy(defaults.resourceType)
     setManageCapacity(defaults.resourceType === "resource")
     setResources(defaults.resources)
-    setQuestions(defaults.questions)
+    setQuestions(withEmailQuestion(defaults.questions))
     setCapacity(Math.max(1, defaults.resources.reduce((sum, resource) => sum + resource.capacity, 0)))
     setShowPresets(false)
   }
@@ -645,21 +655,44 @@ export function NewTypePage() {
                     addLabel="Add a line"
                     onAdd={() => setQuestions([...questions, { label: "New question", question_type: "text", required: false, optionsText: "" }])}
                   >
-                    {questions.map((question, index) => (
-                      <tr key={index} className="border-t border-line">
-                        <td className="px-4 py-3"><Input value={question.label} onChange={(event) => updateQuestion(index, { label: event.target.value })} /></td>
-                        <td className="px-4 py-3">
-                          <select value={question.question_type} onChange={(event) => updateQuestion(index, { question_type: event.target.value })} className="h-10 rounded-md border border-line bg-white px-3">
-                            <option value="text">Text</option>
-                            <option value="phone">Phone Number</option>
-                            <option value="select">Single Choice</option>
-                          </select>
-                        </td>
-                        <td className="px-4 py-3"><Input value={question.optionsText} placeholder="Available answers" onChange={(event) => updateQuestion(index, { optionsText: event.target.value })} /></td>
-                        <td className="px-4 py-3"><input type="checkbox" checked={question.required} onChange={(event) => updateQuestion(index, { required: event.target.checked })} /></td>
-                        <td className="px-4 py-3 text-right"><button type="button" onClick={() => setQuestions(questions.filter((_item, questionIndex) => questionIndex !== index))}><Trash2 size={16} /></button></td>
-                      </tr>
-                    ))}
+                    {questions.map((question, index) => {
+                      const isEmailQuestion = question.question_type === "email"
+                      return (
+                        <tr key={index} className={`border-t border-line${isEmailQuestion ? " bg-blue-50" : ""}`}>
+                          <td className="px-4 py-3">
+                            {isEmailQuestion
+                              ? <span className="flex items-center gap-1.5 text-sm font-semibold text-ink">{question.label} <span className="rounded bg-blue-100 px-1.5 py-0.5 text-xs text-blue-700">required</span></span>
+                              : <Input value={question.label} onChange={(event) => updateQuestion(index, { label: event.target.value })} />}
+                          </td>
+                          <td className="px-4 py-3">
+                            {isEmailQuestion
+                              ? <span className="text-sm text-neutral-500">Email Address</span>
+                              : <select value={question.question_type} onChange={(event) => updateQuestion(index, { question_type: event.target.value })} className="h-10 rounded-md border border-line bg-white px-3">
+                                  <option value="text">Text</option>
+                                  <option value="email">Email Address</option>
+                                  <option value="phone">Phone Number</option>
+                                  <option value="date">Date</option>
+                                  <option value="select">Single Choice</option>
+                                </select>}
+                          </td>
+                          <td className="px-4 py-3">
+                            {isEmailQuestion
+                              ? <span className="text-sm text-neutral-400">—</span>
+                              : <Input value={question.optionsText} placeholder="Available answers" onChange={(event) => updateQuestion(index, { optionsText: event.target.value })} />}
+                          </td>
+                          <td className="px-4 py-3">
+                            {isEmailQuestion
+                              ? <input type="checkbox" checked={true} disabled />
+                              : <input type="checkbox" checked={question.required} onChange={(event) => updateQuestion(index, { required: event.target.checked })} />}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            {isEmailQuestion
+                              ? <span className="text-xs text-neutral-400">locked</span>
+                              : <button type="button" onClick={() => setQuestions(questions.filter((_item, questionIndex) => questionIndex !== index))}><Trash2 size={16} /></button>}
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </EditableTable>
                 )}
                 {activeTab === "communication" && (

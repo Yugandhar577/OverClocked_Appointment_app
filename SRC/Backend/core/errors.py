@@ -91,6 +91,14 @@ class IntakeAnswerMissingError(AppError):
 
 
 # Backend note: Groups related backend data or behavior for a single domain concept.
+class IntakeAnswerInvalidError(AppError):
+    status_code = 422
+
+    def __init__(self, question_id, message: str):
+        super().__init__({"detail": "intake_answer_invalid", "question_id": str(question_id), "message": message})
+
+
+# Backend note: Groups related backend data or behavior for a single domain concept.
 class CancelWindowClosedError(AppError):
     status_code = 409
     detail = "cancel_window_closed"

@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     smtp_host: str = "localhost"
     smtp_port: int = 1025
     smtp_from: str = "noreply@appointments.local"
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_starttls: bool = False
+    resend_api_key: str = ""
+    resend_from_email: str = "onboarding@resend.dev"
     app_base_url: str = "http://localhost:5173"
     frontend_origin: str = "http://localhost:5173"
     future_days_limit_default: int = 30

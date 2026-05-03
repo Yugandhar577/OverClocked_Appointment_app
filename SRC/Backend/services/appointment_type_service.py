@@ -307,15 +307,24 @@ async def replace_resources(session: AsyncSession, appointment_type_id: UUID, pa
                     )
                 )
             if resource is None:
-                resource = Resource(organiser_id=actor.id)
+                resource = Resource(
+                    organiser_id=actor.id,
+                    name=row.name,
+                    resource_type=row.resource_type,
+                    capacity=row.capacity,
+                    timezone=row.timezone,
+                    user_ref_id=row.user_ref_id,
+                    is_active=True,
+                )
                 session.add(resource)
                 await session.flush()
-            resource.name = row.name
-            resource.resource_type = row.resource_type
-            resource.capacity = row.capacity
-            resource.timezone = row.timezone
-            resource.user_ref_id = row.user_ref_id
-            resource.is_active = True
+            else:
+                resource.name = row.name
+                resource.resource_type = row.resource_type
+                resource.capacity = row.capacity
+                resource.timezone = row.timezone
+                resource.user_ref_id = row.user_ref_id
+                resource.is_active = True
             kept_ids.add(resource.id)
             session.add(
                 AppointmentTypeResource(
@@ -386,18 +395,33 @@ async def replace_questions(session: AsyncSession, appointment_type_id: UUID, pa
         if appointment_type.organiser_id != actor.id and "admin" not in getattr(actor, "roles_snapshot", []):
             raise NotOwnerError()
         await session.execute(delete(AppointmentQuestion).where(AppointmentQuestion.appointment_type_id == appointment_type_id))
-        for index, row in enumerate(payload):
+        # Always include the mandatory email question as the first question.
+        # This ensures every appointment type collects the customer's email.
+        email_label = "Email Address"
+        has_email_question = any(
+            row.question_type == "email" or row.label.strip().lower() in ("email", "email address")
+            for row in payload
+        )
+        questions_to_save = list(payload)
+        if not has_email_question:
+            class _EmailRow:
+                label = email_label
+                question_type = "email"
+                required = True
+                options = None
+            questions_to_save = [_EmailRow()] + questions_to_save
+        for index, row in enumerate(questions_to_save):
             session.add(
                 AppointmentQuestion(
                     appointment_type_id=appointment_type_id,
                     question_text=row.label,
                     answer_type=row.question_type,
                     options=row.options,
-                    is_mandatory=row.required,
+                    is_mandatory=True if row.question_type == "email" else row.required,
                     display_order=index,
                 )
             )
-    return len(payload)
+    return len(questions_to_save)
 
 
         # Explanation:

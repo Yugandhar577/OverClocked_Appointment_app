@@ -4,13 +4,13 @@ import { DayPicker } from "react-day-picker"
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom"
 
 import { getAppointmentType, getAppointmentTypeByShare } from "../../api/appointmentTypes"
-import { googleCalendarConnect, joinWaitlist } from "../../api/advanced"
+import { joinWaitlist } from "../../api/advanced"
 import { availability, createBooking } from "../../api/bookings"
 import { errorMessage } from "../../api/client"
 import type { AppointmentTypeDetail, AvailabilitySlot } from "../../api/types"
 import { useAuth } from "../../auth/useAuth"
 import { Button } from "../../components/ui/Button"
-import { Field, Select, Textarea } from "../../components/ui/Field"
+import { Field, Input, Select, Textarea } from "../../components/ui/Field"
 import { Notice } from "../../components/ui/Notice"
 import { Skeleton, SkeletonText } from "../../components/ui/Skeleton"
 import { formatTime, todayIsoDate } from "../../lib/format"
@@ -113,10 +113,31 @@ export function BookingPage({ share = false }: { share?: boolean }) {
 
   const selectedSlot = useMemo(() => slots.find((slot) => slot.slot_id === slotId), [slotId, slots])
   const maxPeople = Math.max(1, selectedSlot?.remaining_capacity ?? 1)
+  const [answerErrors, setAnswerErrors] = useState<Record<string, string>>({})
+
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  const PHONE_RE = /^[\d\s+\-()\[\]]{7,20}$/
+
   const missingRequired = useMemo(
     () => detail?.questions.some((question) => question.is_mandatory && !String(answers[question.id] ?? "").trim()) ?? false,
     [answers, detail],
   )
+
+  const hasAnswerErrors = useMemo(() => Object.values(answerErrors).some(Boolean), [answerErrors])
+
+  function validateAnswer(question: { id: string; answer_type: string }, value: string) {
+    if (!value.trim()) return ""
+    if (question.answer_type === "email" && !EMAIL_RE.test(value))
+      return "Enter a valid email address"
+    if (question.answer_type === "phone" && !PHONE_RE.test(value))
+      return "Enter a valid phone number (7–20 digits, spaces, +, -, ( ) allowed)"
+    return ""
+  }
+
+  function handleAnswerChange(questionId: string, answerType: string, value: string) {
+    setAnswers({ ...answers, [questionId]: value })
+    setAnswerErrors({ ...answerErrors, [questionId]: validateAnswer({ id: questionId, answer_type: answerType }, value) })
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault()
@@ -129,9 +150,15 @@ export function BookingPage({ share = false }: { share?: boolean }) {
       setError("Please answer every required question.")
       return
     }
+    if (hasAnswerErrors) {
+      setError("Please fix the errors in your answers before continuing.")
+      return
+    }
     setSaving(true)
     setError("")
     try {
+      const emailQuestion = detail.questions.find((question) => question.answer_type === "email")
+      const emailAnswer = emailQuestion ? String(answers[emailQuestion.id] ?? "").trim() : ""
       const response = await createBooking({
         appointment_type_id: detail.id,
         slot_id: slotId,
@@ -139,7 +166,7 @@ export function BookingPage({ share = false }: { share?: boolean }) {
         people_count: people,
         customer_info: {
           full_name: auth.user.full_name,
-          email: auth.user.email,
+          email: emailAnswer || auth.user.email,
           phone: auth.user.phone ?? undefined,
         },
         answers: detail.questions.map((question) => ({
@@ -209,9 +236,23 @@ export function BookingPage({ share = false }: { share?: boolean }) {
     }
   }
 
-  async function openGoogleCalendar() {
-    const response = await googleCalendarConnect()
-    window.open(response.auth_url, "_blank", "noopener,noreferrer")
+  function openGoogleCalendar() {
+    const title = encodeURIComponent(detail?.title ?? "Appointment")
+    const location = encodeURIComponent(detail?.venue ?? "")
+
+    function toGcalDateTime(iso: string) {
+      return new Date(iso).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "")
+    }
+
+    let dates = ""
+    if (selectedSlot) {
+      const start = toGcalDateTime(selectedSlot.start_datetime)
+      const end = toGcalDateTime(selectedSlot.end_datetime)
+      dates = `&dates=${start}/${end}`
+    }
+
+    const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}${dates}&location=${location}`
+    window.open(url, "_blank", "noopener,noreferrer")
   }
 
   function slotClass(slot: AvailabilitySlot, selected: boolean) {
@@ -346,15 +387,55 @@ export function BookingPage({ share = false }: { share?: boolean }) {
                 </Field>
               )}
               {detail.questions.map((question) => (
-                <Field key={question.id} label={`${question.question_text}${question.is_mandatory ? " *" : ""}`}>
+                <Field key={question.id} label={`${question.question_text}${question.is_mandatory ? " *" : ""}`} error={answerErrors[question.id]}>
                   {question.answer_type === "boolean" ? (
-                    <Select value={answers[question.id] ?? ""} onChange={(event) => setAnswers({ ...answers, [question.id]: event.target.value })}>
+                    <Select
+                      value={answers[question.id] ?? ""}
+                      onChange={(event) => handleAnswerChange(question.id, question.answer_type, event.target.value)}
+                    >
                       <option value="">Select</option>
                       <option value="true">Yes</option>
                       <option value="false">No</option>
                     </Select>
+                  ) : question.answer_type === "select" && Array.isArray(question.options) && question.options.length > 0 ? (
+                    <Select
+                      value={answers[question.id] ?? ""}
+                      onChange={(event) => handleAnswerChange(question.id, question.answer_type, event.target.value)}
+                      aria-invalid={Boolean(answerErrors[question.id]) || undefined}
+                    >
+                      <option value="">Select an option</option>
+                      {(question.options as string[]).map((opt) => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </Select>
+                  ) : question.answer_type === "email" ? (
+                    <Input
+                      type="email"
+                      value={answers[question.id] ?? ""}
+                      onChange={(event) => handleAnswerChange(question.id, question.answer_type, event.target.value)}
+                      placeholder="you@example.com"
+                      aria-invalid={Boolean(answerErrors[question.id]) || undefined}
+                    />
+                  ) : question.answer_type === "phone" ? (
+                    <Input
+                      type="tel"
+                      value={answers[question.id] ?? ""}
+                      onChange={(event) => handleAnswerChange(question.id, question.answer_type, event.target.value)}
+                      placeholder="+91 98765 43210"
+                      aria-invalid={Boolean(answerErrors[question.id]) || undefined}
+                    />
+                  ) : question.answer_type === "date" ? (
+                    <Input
+                      type="date"
+                      value={answers[question.id] ?? ""}
+                      onChange={(event) => handleAnswerChange(question.id, question.answer_type, event.target.value)}
+                      aria-invalid={Boolean(answerErrors[question.id]) || undefined}
+                    />
                   ) : (
-                    <Textarea value={answers[question.id] ?? ""} onChange={(event) => setAnswers({ ...answers, [question.id]: event.target.value })} />
+                    <Textarea
+                      value={answers[question.id] ?? ""}
+                      onChange={(event) => handleAnswerChange(question.id, question.answer_type, event.target.value)}
+                    />
                   )}
                 </Field>
               ))}
@@ -390,7 +471,7 @@ export function BookingPage({ share = false }: { share?: boolean }) {
             {!auth.user ? "Sign in to join waitlist" : "Join waitlist"}
           </Button>
         ) : (
-          <Button className="mt-5 w-full" disabled={!slotId || saving || missingRequired || detail?.resources.length === 0}>
+          <Button className="mt-5 w-full" disabled={!slotId || saving || missingRequired || hasAnswerErrors || detail?.resources.length === 0}>
             <CalendarDays size={17} />
             {!auth.user
               ? "Sign in to confirm"

@@ -6,11 +6,15 @@ Comments in this file are intentionally explicit because the project is used in 
 Keep behavior changes separate from documentation-only edits so reviews can verify no runtime contract changed.
 """
 
+import re
 import secrets
 from datetime import timedelta
 from uuid import UUID
 
 from sqlalchemy import and_, func, select, text, update
+
+_EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
+_PHONE_RE = re.compile(r"^[\d\s+\-()\[\]]{7,20}$")
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from SRC.Backend.config import get_settings
@@ -19,6 +23,7 @@ from SRC.Backend.core.errors import (
     BookingInProgressError,
     CancelWindowClosedError,
     CapacityExceededError,
+    IntakeAnswerInvalidError,
     IntakeAnswerMissingError,
     NotFoundError,
     NotOwnerError,
@@ -91,6 +96,18 @@ def _answer_text(value) -> str | None:
     if isinstance(value, (dict, list)):
         return None
     return str(value)
+
+
+def _validate_answer_value(question: AppointmentQuestion, value) -> str | None:
+    """Return an error message if the answer value is invalid for the question's answer_type, else None."""
+    text_value = str(value).strip() if not isinstance(value, (dict, list)) else ""
+    if not text_value:
+        return None
+    if question.answer_type == "email" and not _EMAIL_RE.match(text_value):
+        return "Enter a valid email address"
+    if question.answer_type == "phone" and not _PHONE_RE.match(text_value):
+        return "Enter a valid phone number"
+    return None
 
 
 # Explanation:
@@ -209,8 +226,33 @@ async def create(session: AsyncSession, payload, actor: User) -> tuple[Appointme
         if missing:
             raise IntakeAnswerMissingError(next(iter(missing)))
 
+        # Validate answer values against their question's answer_type (email format, phone format, etc.)
+        answer_by_question_id = {answer.question_id: answer for answer in payload.answers}
+        if answer_by_question_id:
+            questions_result = await session.execute(
+                select(AppointmentQuestion).where(
+                    AppointmentQuestion.appointment_type_id == payload.appointment_type_id,
+                    AppointmentQuestion.id.in_(answer_by_question_id.keys()),
+                )
+            )
+            for question in questions_result.scalars():
+                answer = answer_by_question_id[question.id]
+                err = _validate_answer_value(question, answer.value)
+                if err:
+                    raise IntakeAnswerInvalidError(question.id, err)
+
         status = "pending" if appointment_type.requires_confirmation or appointment_type.is_paid else "confirmed"
         customer = payload.customer_info
+        # If any email-type question was answered, use that as customer_email.
+        # This connects the "Email Address" question directly to notification delivery.
+        email_from_question: str | None = None
+        for q_id, ans in answer_by_question_id.items():
+            q = await session.get(AppointmentQuestion, q_id)
+            if q and q.answer_type == "email" and isinstance(ans.value, str) and ans.value.strip():
+                email_from_question = ans.value.strip()
+                break
+        # Priority: email from question > customer_info email > actor's account email
+        customer_email = email_from_question or (customer.email if customer else None) or actor.email
         appointment = Appointment(
             appointment_type_id=payload.appointment_type_id,
             slot_id=payload.slot_id,
@@ -220,7 +262,7 @@ async def create(session: AsyncSession, payload, actor: User) -> tuple[Appointme
             people_count=payload.people_count,
             confirmation_code=_confirmation_code(),
             customer_full_name=customer.full_name if customer else actor.full_name,
-            customer_email=customer.email if customer else actor.email,
+            customer_email=customer_email,
             customer_phone=customer.phone if customer else actor.phone,
             confirmed_at=utcnow() if status == "confirmed" else None,
         )

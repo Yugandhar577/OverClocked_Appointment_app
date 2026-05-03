@@ -6,10 +6,14 @@ Comments in this file are intentionally explicit because the project is used in 
 Keep behavior changes separate from documentation-only edits so reviews can verify no runtime contract changed.
 """
 
+import re
 from datetime import date, datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+_EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
+_PHONE_RE = re.compile(r"^[\d\s+\-()\[\]]{7,20}$")
 
 
 # Backend note: Groups related backend data or behavior for a single domain concept.
@@ -35,6 +39,35 @@ class CustomerInfoIn(BaseModel):
     full_name: str | None = None
     email: str | None = None
     phone: str | None = None
+
+    @field_validator("full_name", mode="before")
+    @classmethod
+    def validate_full_name(cls, v: object) -> object:
+        if isinstance(v, str):
+            v = v.strip()
+            if v and len(v) < 2:
+                raise ValueError("Full name must be at least 2 characters")
+            if len(v) > 150:
+                raise ValueError("Full name must be at most 150 characters")
+        return v or None
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def validate_email(cls, v: object) -> object:
+        if isinstance(v, str):
+            v = v.strip()
+            if v and not _EMAIL_RE.match(v):
+                raise ValueError("Enter a valid email address")
+        return v or None
+
+    @field_validator("phone", mode="before")
+    @classmethod
+    def validate_phone(cls, v: object) -> object:
+        if isinstance(v, str):
+            v = v.strip()
+            if v and not _PHONE_RE.match(v):
+                raise ValueError("Enter a valid phone number (7–20 digits, spaces, +, -, ( ) allowed)")
+        return v or None
 
 
 # Backend note: Input contract used when creating a backend resource.

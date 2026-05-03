@@ -28,14 +28,23 @@ services:
       - .env.example
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/appointments
-      SMTP_HOST: mailhog
+      # Defaults to MailHog for local capture. Set these in project-root `.env`
+      # to send real email directly, for example through Gmail SMTP.
+      SMTP_HOST: ${SMTP_HOST:-mailhog}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_FROM: ${SMTP_FROM:-noreply@appointments.local}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_STARTTLS: ${SMTP_STARTTLS:-false}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-onboarding@resend.dev}
       # Override with your real Google OAuth client ID to enable Google sign-in
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       # Host `.env` (project root) is read by Compose for substitution — add keys there for real Razorpay checkout
       RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
       RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
-      MOCK_PAYMENTS: ${MOCK_PAYMENTS:-}
-      DEMO_PAYMENT_BYPASS: ${DEMO_PAYMENT_BYPASS:-}
+      MOCK_PAYMENTS: ${MOCK_PAYMENTS:-false}
+      DEMO_PAYMENT_BYPASS: ${DEMO_PAYMENT_BYPASS:-false}
     ports:
       - "8000:8000"
     volumes:
