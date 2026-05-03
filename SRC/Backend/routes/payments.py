@@ -306,7 +306,7 @@ async def demo_complete_payment(
     current_user: User = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ) -> VerifyPaymentResponse:
-    if not settings.demo_payment_bypass:
+    if not (settings.demo_payment_bypass or _env_allows_auto_mock(settings)):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Demo payment completion is disabled. Set DEMO_PAYMENT_BYPASS=true for presentation mode only.",

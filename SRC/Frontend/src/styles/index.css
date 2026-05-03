@@ -48,17 +48,6 @@ textarea {
   }
 }
 
-@keyframes auth-left-slide {
-  from {
-    opacity: 0;
-    transform: translateX(44px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
 @keyframes auth-right-slide {
   from {
     opacity: 0;
@@ -70,23 +59,77 @@ textarea {
   }
 }
 
+@keyframes auth-form-rise {
+  from {
+    opacity: 0;
+    transform: translateY(34px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .auth-shell-card {
   animation: auth-card-rise 520ms ease-out both;
 }
 
+.auth-panel-left,
+.auth-panel-right {
+  position: relative;
+  min-width: 0;
+}
+
 .auth-panel-left {
-  animation: auth-left-slide 620ms 120ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  z-index: 2;
 }
 
 .auth-panel-right {
-  animation: auth-right-slide 620ms 180ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  z-index: 1;
+}
+
+.auth-form-frame {
+  animation: auth-form-rise 520ms 120ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@media (min-width: 1024px) {
+  .auth-panel-left,
+  .auth-panel-right {
+    transition:
+      transform 640ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      opacity 360ms ease;
+    will-change: transform;
+  }
+
+  .auth-mode-login .auth-panel-left,
+  .auth-mode-login .auth-panel-right {
+    transform: translateX(0);
+  }
+
+  .auth-mode-signup .auth-panel-left {
+    transform: translateX(100%);
+  }
+
+  .auth-mode-signup .auth-panel-right {
+    transform: translateX(-100%);
+  }
+
+  .auth-mode-login .auth-form-frame {
+    animation: auth-right-slide 560ms 120ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+
+  .auth-mode-signup .auth-form-frame {
+    animation: auth-form-rise 560ms 120ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .auth-shell-card,
   .auth-panel-left,
-  .auth-panel-right {
+  .auth-panel-right,
+  .auth-form-frame {
     animation: none;
+    transition: none;
   }
 }
 

@@ -47,6 +47,9 @@ export function BookingPage({ share = false }: { share?: boolean }) {
   const [slotId, setSlotId] = useState("")
   const [people, setPeople] = useState(1)
   const [answers, setAnswers] = useState<Record<string, string>>({})
+  const [contactEmail, setContactEmail] = useState("")
+  const [contactPhone, setContactPhone] = useState("")
+  const [contactErrors, setContactErrors] = useState({ email: "", phone: "" })
   const [error, setError] = useState("")
   const [slotHint, setSlotHint] = useState("")
   const [loadingSlots, setLoadingSlots] = useState(false)
@@ -60,6 +63,13 @@ export function BookingPage({ share = false }: { share?: boolean }) {
   useEffect(() => {
     loadFeatureFlags().then((flags) => setWaitlistEnabled(Boolean(flags.ENABLE_WAITLIST)))
   }, [])
+
+  useEffect(() => {
+    const user = auth.user
+    if (!user) return
+    setContactEmail((current) => current || user.email || "")
+    setContactPhone((current) => current || user.phone || "")
+  }, [auth.user])
 
   useEffect(() => {
     const load = shareToken ? getAppointmentTypeByShare(shareToken) : appointmentTypeId ? getAppointmentType(appointmentTypeId) : null
@@ -117,13 +127,21 @@ export function BookingPage({ share = false }: { share?: boolean }) {
 
   const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   const PHONE_RE = /^[\d\s+\-()\[\]]{7,20}$/
-
-  const missingRequired = useMemo(
-    () => detail?.questions.some((question) => question.is_mandatory && !String(answers[question.id] ?? "").trim()) ?? false,
-    [answers, detail],
+  const intakeQuestions = useMemo(
+    () => detail?.questions.filter((question) => question.answer_type !== "email" && question.answer_type !== "phone") ?? [],
+    [detail],
   )
 
-  const hasAnswerErrors = useMemo(() => Object.values(answerErrors).some(Boolean), [answerErrors])
+  const missingRequired = useMemo(
+    () => intakeQuestions.some((question) => question.is_mandatory && !String(answers[question.id] ?? "").trim()),
+    [answers, intakeQuestions],
+  )
+
+  const hasAnswerErrors = useMemo(
+    () => Object.values(answerErrors).some(Boolean) || Object.values(contactErrors).some(Boolean),
+    [answerErrors, contactErrors],
+  )
+  const contactMissing = !contactEmail.trim() || !contactPhone.trim()
 
   function validateAnswer(question: { id: string; answer_type: string }, value: string) {
     if (!value.trim()) return ""
@@ -132,6 +150,27 @@ export function BookingPage({ share = false }: { share?: boolean }) {
     if (question.answer_type === "phone" && !PHONE_RE.test(value))
       return "Enter a valid phone number (7–20 digits, spaces, +, -, ( ) allowed)"
     return ""
+  }
+
+  function validateContact(email: string, phone: string) {
+    return {
+      email: !email.trim() ? "Email is required" : EMAIL_RE.test(email.trim()) ? "" : "Enter a valid email address",
+      phone: !phone.trim()
+        ? "Phone number is required"
+        : PHONE_RE.test(phone.trim())
+          ? ""
+          : "Enter a valid phone number (7-20 digits, spaces, +, -, ( ) allowed)",
+    }
+  }
+
+  function handleContactEmailChange(value: string) {
+    setContactEmail(value)
+    setContactErrors((current) => ({ ...current, email: validateContact(value, contactPhone).email }))
+  }
+
+  function handleContactPhoneChange(value: string) {
+    setContactPhone(value)
+    setContactErrors((current) => ({ ...current, phone: validateContact(contactEmail, value).phone }))
   }
 
   function handleAnswerChange(questionId: string, answerType: string, value: string) {
@@ -146,6 +185,12 @@ export function BookingPage({ share = false }: { share?: boolean }) {
       navigate("/login", { state: { from: location.pathname } })
       return
     }
+    const nextContactErrors = validateContact(contactEmail, contactPhone)
+    setContactErrors(nextContactErrors)
+    if (nextContactErrors.email || nextContactErrors.phone) {
+      setError("Please add valid email and phone details before continuing.")
+      return
+    }
     if (missingRequired) {
       setError("Please answer every required question.")
       return
@@ -157,8 +202,8 @@ export function BookingPage({ share = false }: { share?: boolean }) {
     setSaving(true)
     setError("")
     try {
-      const emailQuestion = detail.questions.find((question) => question.answer_type === "email")
-      const emailAnswer = emailQuestion ? String(answers[emailQuestion.id] ?? "").trim() : ""
+      const customerEmail = contactEmail.trim()
+      const customerPhone = contactPhone.trim()
       const response = await createBooking({
         appointment_type_id: detail.id,
         slot_id: slotId,
@@ -166,12 +211,17 @@ export function BookingPage({ share = false }: { share?: boolean }) {
         people_count: people,
         customer_info: {
           full_name: auth.user.full_name,
-          email: emailAnswer || auth.user.email,
-          phone: auth.user.phone ?? undefined,
+          email: customerEmail,
+          phone: customerPhone,
         },
         answers: detail.questions.map((question) => ({
           question_id: question.id,
-          value: answers[question.id] ?? "",
+          value:
+            question.answer_type === "email"
+              ? customerEmail
+              : question.answer_type === "phone"
+                ? customerPhone
+                : answers[question.id] ?? "",
         })),
       })
       if (response.payment_required) {
@@ -271,8 +321,8 @@ export function BookingPage({ share = false }: { share?: boolean }) {
   if (!detail && !error) return <BookingPageSkeleton />
 
   return (
-    <form className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]" onSubmit={submit}>
-      <section className="grid gap-5">
+    <form className="grid gap-6 lg:grid-cols-[minmax(0,820px)_360px] lg:items-start lg:justify-center" onSubmit={submit}>
+      <section className="grid min-w-0 gap-5">
         {error && <Notice tone="error">{error}</Notice>}
         {waitlistMessage && <Notice tone="success">{waitlistMessage}</Notice>}
         {detail && (
@@ -300,7 +350,32 @@ export function BookingPage({ share = false }: { share?: boolean }) {
                 before confirming this appointment.
               </Notice>
             )}
-            <div className="grid gap-4 rounded-md border border-line bg-paper p-4">
+            {auth.user && (
+              <div className="grid gap-4 rounded-md border border-line bg-paper p-4 sm:grid-cols-2 md:p-5">
+                <h2 className="text-lg font-bold text-ink sm:col-span-2">Contact details</h2>
+                <Field label="Email *" error={contactErrors.email}>
+                  <Input
+                    type="email"
+                    value={contactEmail}
+                    onChange={(event) => handleContactEmailChange(event.target.value)}
+                    placeholder="you@example.com"
+                    className="h-11 text-base"
+                    aria-invalid={Boolean(contactErrors.email) || undefined}
+                  />
+                </Field>
+                <Field label="Phone number *" error={contactErrors.phone}>
+                  <Input
+                    type="tel"
+                    value={contactPhone}
+                    onChange={(event) => handleContactPhoneChange(event.target.value)}
+                    placeholder="+91 98765 43210"
+                    className="h-11 text-base"
+                    aria-invalid={Boolean(contactErrors.phone) || undefined}
+                  />
+                </Field>
+              </div>
+            )}
+            <div className="grid gap-5 rounded-md border border-line bg-paper p-4 md:p-5">
               {detail.resources.length > 0 ? (
                 <Field label="Resource">
                   <Select value={resourceId} onChange={(event) => setResourceId(event.target.value)}>
@@ -314,14 +389,15 @@ export function BookingPage({ share = false }: { share?: boolean }) {
               ) : (
                 <Notice tone="error">No active resource is attached to this appointment type.</Notice>
               )}
-              <div className="grid gap-2">
+              <div className="grid gap-5 xl:grid-cols-[minmax(0,360px)_minmax(0,1fr)] xl:items-start">
+                <div className="grid gap-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <label className="text-sm font-semibold text-ink">Select a date</label>
                   <Button type="button" variant="secondary" onClick={openGoogleCalendar}>
                     Google Calendar
                   </Button>
                 </div>
-                <div className="rounded-md border border-line bg-white p-3">
+                <div className="w-fit max-w-full rounded-md border border-line bg-white p-3">
                   <DayPicker
                     mode="single"
                     selected={parseIsoDate(date)}
@@ -335,11 +411,12 @@ export function BookingPage({ share = false }: { share?: boolean }) {
                   />
                 </div>
                 <p className="text-xs text-neutral-600">Timezone: {Intl.DateTimeFormat().resolvedOptions().timeZone}</p>
-              </div>
+                </div>
+                <div className="grid content-start gap-4">
               <div className="grid gap-2">
                 <label className="text-sm font-semibold text-ink">Slots</label>
                 {slotHint && <p className="text-sm text-neutral-700">{slotHint}</p>}
-                <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                <div className="grid grid-cols-2 gap-2">
                   {loadingSlots && slots.length === 0 &&
                     Array.from({ length: 8 }, (_, index) => (
                       <Skeleton key={index} className="h-[58px] border border-line bg-white" />
@@ -386,7 +463,9 @@ export function BookingPage({ share = false }: { share?: boolean }) {
                   </Select>
                 </Field>
               )}
-              {detail.questions.map((question) => (
+                </div>
+              </div>
+              {intakeQuestions.map((question) => (
                 <Field key={question.id} label={`${question.question_text}${question.is_mandatory ? " *" : ""}`} error={answerErrors[question.id]}>
                   {question.answer_type === "boolean" ? (
                     <Select
@@ -443,7 +522,7 @@ export function BookingPage({ share = false }: { share?: boolean }) {
           </>
         )}
       </section>
-      <aside className="h-fit rounded-md border border-line bg-paper p-4 shadow-panel">
+      <aside className="h-fit rounded-md border border-line bg-paper p-4 shadow-panel lg:sticky lg:top-24">
         <h2 className="text-lg font-bold text-ink">Summary</h2>
         <dl className="mt-4 grid gap-3 text-sm">
           <div className="flex justify-between gap-3">
@@ -471,7 +550,15 @@ export function BookingPage({ share = false }: { share?: boolean }) {
             {!auth.user ? "Sign in to join waitlist" : "Join waitlist"}
           </Button>
         ) : (
-          <Button className="mt-5 w-full" disabled={!slotId || saving || missingRequired || hasAnswerErrors || detail?.resources.length === 0}>
+          <Button
+            className="mt-5 w-full"
+            disabled={
+              !slotId ||
+              saving ||
+              Boolean(auth.user && (contactMissing || missingRequired || hasAnswerErrors)) ||
+              detail?.resources.length === 0
+            }
+          >
             <CalendarDays size={17} />
             {!auth.user
               ? "Sign in to confirm"
@@ -497,8 +584,8 @@ export function BookingPage({ share = false }: { share?: boolean }) {
 
 function BookingPageSkeleton() {
   return (
-    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
-      <section className="grid gap-5">
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,820px)_360px] lg:items-start lg:justify-center">
+      <section className="grid min-w-0 gap-5">
         <div className="border-b border-line pb-5">
           <Skeleton className="h-10 w-72" />
           <div className="mt-4 flex gap-3">

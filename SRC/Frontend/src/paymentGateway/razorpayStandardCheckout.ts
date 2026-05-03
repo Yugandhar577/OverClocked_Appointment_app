@@ -10,11 +10,27 @@ const THEME_COLOR = "#714b67"
 
 declare global {
   interface Window {
-    Razorpay?: new (options: Record<string, unknown>) => { open: () => void }
+    Razorpay?: new (options: Record<string, unknown>) => RazorpayCheckoutInstance
   }
 }
 
 let scriptPromise: Promise<void> | null = null
+
+interface RazorpayCheckoutInstance {
+  open: () => void
+  close?: () => void
+  on?: (event: "payment.failed", handler: (response: RazorpayPaymentFailedResponse) => void) => void
+}
+
+interface RazorpayPaymentFailedResponse {
+  error?: {
+    code?: string
+    description?: string
+    reason?: string
+    source?: string
+    step?: string
+  }
+}
 
 export function loadRazorpayCheckoutScript(): Promise<void> {
   if (typeof window === "undefined") return Promise.reject(new Error("No window"))
@@ -57,9 +73,11 @@ export async function openRazorpayStandardCheckout(params: OpenStandardCheckoutP
     }
 
     let settled = false
+    let launchTimer: number | undefined
     const finish = (result: StandardCheckoutResult) => {
       if (settled) return
       settled = true
+      if (launchTimer) window.clearTimeout(launchTimer)
       resolve(result)
     }
 
@@ -122,7 +140,23 @@ export async function openRazorpayStandardCheckout(params: OpenStandardCheckoutP
 
     try {
       const rzp = new window.Razorpay(options)
+      rzp.on?.("payment.failed", (response) => {
+        const err = response.error
+        const detail = err?.description || err?.reason || err?.code || "Payment failed in Razorpay checkout."
+        finish({ ok: false, message: detail })
+      })
+      launchTimer = window.setTimeout(() => {
+        if (!settled) {
+          rzp.close?.()
+          finish({
+            ok: false,
+            message:
+              "Razorpay checkout did not finish opening. This is usually a blocked checkout frame or a gateway-side load failure. Retry or use Demo success for presentation.",
+          })
+        }
+      }, 15000)
       rzp.open()
+      onStatus("Razorpay checkout launched. Complete the payment in the secure window.")
     } catch (e) {
       finish({ ok: false, message: e instanceof Error ? e.message : String(e) })
     }

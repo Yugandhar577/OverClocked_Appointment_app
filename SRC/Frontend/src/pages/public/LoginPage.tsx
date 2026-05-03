@@ -158,7 +158,7 @@ export function LoginPage() {
           to="/signup"
           onClick={(event) => {
             event.preventDefault()
-            slideNavigate(navigate, "/signup")
+            navigate("/signup")
           }}
         >
           Create an account

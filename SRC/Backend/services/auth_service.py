@@ -192,7 +192,7 @@ async def verify_otp(session: AsyncSession, email: str, otp: str) -> bool:
 
 
 # Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
-async def resend_otp(session: AsyncSession, email: str, otp_ttl_seconds: int) -> str:
+async def resend_otp(session: AsyncSession, email: str, otp_ttl_seconds: int) -> tuple[User, str]:
     async with session.begin():
         user = await session.scalar(select(User).where(User.email == email.lower()))
         if not user:
@@ -213,7 +213,7 @@ async def resend_otp(session: AsyncSession, email: str, otp_ttl_seconds: int) ->
             subject="Your verification code",
             body=f"Your OverClocked verification code is {code}.",
         )
-    return code
+    return user, code
 
 
     # Explanation:
@@ -248,11 +248,11 @@ async def login(session: AsyncSession, email: str, password: str) -> tuple[str, 
 
 
 # Backend note: Coordinates a focused piece of backend logic used by routes, services, jobs, or tests.
-async def forgot_password(session: AsyncSession, email: str) -> None:
+async def forgot_password(session: AsyncSession, email: str) -> User | None:
     async with session.begin():
         user = await session.scalar(select(User).where(User.email == email.lower()))
         if not user:
-            return
+            return None
         token = create_reset_token(user.id)
         queue_email(
             session,
@@ -261,6 +261,7 @@ async def forgot_password(session: AsyncSession, email: str) -> None:
             subject="Reset your password",
             body=f"Use this reset token: {token}",
         )
+    return user
 
 
     # Explanation:

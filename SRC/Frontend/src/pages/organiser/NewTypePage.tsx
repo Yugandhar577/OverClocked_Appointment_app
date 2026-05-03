@@ -1,4 +1,4 @@
-import { CalendarDays, ExternalLink, ImagePlus, Link2, Package, Plus, Send, Trash2, Users, X } from "lucide-react"
+import { CalendarDays, ExternalLink, ImagePlus, Link2, Package, Send, Trash2, Users, X } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 
@@ -153,7 +153,6 @@ export function NewTypePage() {
   const [isPaid, setIsPaid] = useState(false)
   const [price, setPrice] = useState(0)
   const [imageUrl, setImageUrl] = useState("")
-  const [videoUrl, setVideoUrl] = useState("")
   const [bookingEmailTemplate, setBookingEmailTemplate] = useState("Appointment: Attendee Invitation")
   const [cancellationEmailTemplate, setCancellationEmailTemplate] = useState("Appointment: Appointment Canceled")
   const [reminderEmailHours, setReminderEmailHours] = useState(3)
@@ -214,7 +213,6 @@ export function NewTypePage() {
     setIsPaid(detail.is_paid)
     setPrice(Number(detail.price || 0))
     setImageUrl(detail.image_url || "")
-    setVideoUrl(detail.video_url || "")
     setBookingEmailTemplate(detail.booking_email_template || "Appointment: Attendee Invitation")
     setCancellationEmailTemplate(detail.cancellation_email_template || "Appointment: Appointment Canceled")
     setReminderEmailHours(detail.reminder_email_hours ?? 3)
@@ -272,7 +270,6 @@ export function NewTypePage() {
         venue,
         confirmation_msg: confirmationMsg,
         image_url: imageUrl,
-        video_url: videoUrl,
         booking_email_template: bookingEmailTemplate,
         cancellation_email_template: cancellationEmailTemplate,
         reminder_email_hours: reminderEmailHours,
@@ -408,11 +405,6 @@ export function NewTypePage() {
     reader.readAsDataURL(file)
   }
 
-  function addVideoUrl() {
-    const value = window.prompt("Video meeting URL", videoUrl)
-    if (value !== null) setVideoUrl(value.trim())
-  }
-
   function openActivityComposer(kind: "message" | "note") {
     if (!appointmentTypeId) {
       setMessage("Save the appointment type before using activity.")
@@ -504,29 +496,30 @@ export function NewTypePage() {
 
         <div className="grid lg:grid-cols-[minmax(0,1fr)_340px]">
           <div className="grid gap-6 p-5">
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.9fr)]">
-              <section className="grid gap-5">
-                <label className="grid gap-2">
-                  <span className="text-sm font-bold text-ink">Appointment Title</span>
+            <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.9fr)]">
+              <section className="grid content-start gap-5 rounded-md border border-line bg-white p-5 shadow-sm md:p-6">
+                <label className="grid gap-3 sm:grid-cols-[190px_minmax(0,1fr)] sm:items-center">
+                  <span className="text-base font-bold text-ink">Appointment Title</span>
                   <input
                     value={title}
                     onChange={(event) => setTitle(event.target.value)}
-                    className="focus-ring min-w-0 border-0 border-b border-transparent bg-transparent text-4xl font-semibold text-ink outline-none focus:border-line"
+                    className="focus-ring h-16 min-w-0 rounded-md border border-line bg-white px-4 text-3xl font-semibold text-ink outline-none transition-colors focus:border-line"
                   />
                 </label>
                 <TwoColumn label="Duration">
-                  <div className="flex items-center gap-2">
-                    <Input type="number" min={5} value={duration} onChange={(event) => setDuration(Number(event.target.value))} className="w-24" />
-                    <span>min</span>
+                  <div className="grid max-w-md grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+                    <Input
+                      type="number"
+                      min={5}
+                      value={duration}
+                      onChange={(event) => setDuration(Number(event.target.value))}
+                      className="h-14 w-full text-base"
+                    />
+                    <span className="text-base">min</span>
                   </div>
                 </TwoColumn>
                 <TwoColumn label="Location">
-                  <Textarea value={venue} onChange={(event) => setVenue(event.target.value)} className="min-h-20" />
-                  <button type="button" onClick={addVideoUrl} className="mt-2 inline-flex items-center gap-2 text-sm font-bold text-signal">
-                    <Plus size={16} />
-                    {videoUrl ? "Change Video" : "Add Video"}
-                  </button>
-                  {videoUrl && <p className="mt-1 max-w-sm truncate text-xs text-neutral-600">{videoUrl}</p>}
+                  <Textarea value={venue} onChange={(event) => setVenue(event.target.value)} className="min-h-36 w-full text-base" />
                 </TwoColumn>
               </section>
 
@@ -899,9 +892,9 @@ function Counter({ icon, label, value }: { icon: React.ReactNode; label: string;
 
 function TwoColumn({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-[160px_minmax(0,1fr)]">
-      <strong className="text-sm text-ink">{label}</strong>
-      <div className="min-w-0 text-sm text-ink">{children}</div>
+    <div className="grid gap-3 sm:grid-cols-[190px_minmax(0,1fr)]">
+      <strong className="text-base text-ink">{label}</strong>
+      <div className="min-w-0 text-base text-ink">{children}</div>
     </div>
   )
 }

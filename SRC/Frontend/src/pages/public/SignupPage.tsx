@@ -53,6 +53,12 @@ export function SignupPage() {
 
   return (
     <div className="grid gap-4">
+      <div>
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-neutral-500">New workspace</p>
+        <h2 className="mt-2 text-3xl font-black text-ink">Create your account</h2>
+        <p className="mt-2 text-sm text-neutral-600">Verify your email, then start managing appointments.</p>
+      </div>
+
       {errors.root && <Notice tone="error">{errors.root.message}</Notice>}
 
       <form className="grid gap-4" onSubmit={handleSubmit(submit)} noValidate>
@@ -70,7 +76,7 @@ export function SignupPage() {
             aria-invalid={errors.password ? true : undefined}
           />
         </Field>
-        <Button disabled={isSubmitting}>{isSubmitting ? "Creating account..." : "Create account"}</Button>
+        <Button className="h-11" disabled={isSubmitting}>{isSubmitting ? "Creating account..." : "Create account"}</Button>
       </form>
 
       {googleClientId ? (
@@ -97,16 +103,19 @@ export function SignupPage() {
         </>
       ) : null}
 
-      <Link
-        className="text-sm font-semibold text-signal"
-        to="/login"
-        onClick={(event) => {
-          event.preventDefault()
-          slideNavigate(navigate, "/login")
-        }}
-      >
-        Back to login
-      </Link>
+      <p className="text-sm text-neutral-700">
+        Already registered?{" "}
+        <Link
+          className="font-semibold text-signal"
+          to="/login"
+          onClick={(event) => {
+            event.preventDefault()
+            navigate("/login")
+          }}
+        >
+          Login
+        </Link>
+      </p>
     </div>
   )
 }

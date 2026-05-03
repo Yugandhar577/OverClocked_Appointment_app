@@ -179,3 +179,30 @@ async def deliver_queued_notifications_for_appointment(
         if await deliver_notification_job(notification_id, active_settings):
             delivered += 1
     return delivered
+
+
+async def deliver_queued_notifications_for_recipient(
+    recipient_id: UUID,
+    event_type: str | None = None,
+    settings: Settings | None = None,
+) -> int:
+    active_settings = settings or get_settings()
+    from SRC.Backend.db.session import async_session_factory
+
+    async with async_session_factory() as session:
+        stmt = (
+            select(Notification.id)
+            .where(Notification.recipient_id == recipient_id)
+            .where(Notification.channel == "email")
+            .where(Notification.status == "queued")
+            .order_by(Notification.created_at.asc(), Notification.id.asc())
+        )
+        if event_type:
+            stmt = stmt.where(Notification.event_type == event_type)
+        notification_ids = list((await session.execute(stmt)).scalars().all())
+
+    delivered = 0
+    for notification_id in notification_ids:
+        if await deliver_notification_job(notification_id, active_settings):
+            delivered += 1
+    return delivered

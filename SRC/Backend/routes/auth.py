@@ -6,7 +6,7 @@ Comments in this file are intentionally explicit because the project is used in 
 Keep behavior changes separate from documentation-only edits so reviews can verify no runtime contract changed.
 """
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, BackgroundTasks, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from SRC.Backend.config import Settings, get_settings
@@ -28,6 +28,7 @@ from SRC.Backend.schemas.auth import (
     VerifyOtpResponse,
 )
 from SRC.Backend.services import auth_service
+from SRC.Backend.services.email_delivery import deliver_queued_notifications_for_recipient
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -36,10 +37,12 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 @router.post("/signup", response_model=SignupResponse, status_code=status.HTTP_201_CREATED)
 async def signup(
     payload: SignupRequest,
+    background_tasks: BackgroundTasks,
     session: AsyncSession = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ):
     user, _otp = await auth_service.signup(session, payload, settings.otp_ttl_seconds)
+    background_tasks.add_task(deliver_queued_notifications_for_recipient, user.id, "email_verify")
     return SignupResponse(user_id=user.id, message="otp_sent")
 
 
@@ -87,10 +90,12 @@ async def verify_otp(payload: VerifyOtpRequest, session: AsyncSession = Depends(
 @router.post("/resend-otp")
 async def resend_otp(
     payload: ResendOtpRequest,
+    background_tasks: BackgroundTasks,
     session: AsyncSession = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ):
-    await auth_service.resend_otp(session, payload.email, settings.otp_ttl_seconds)
+    user, _otp = await auth_service.resend_otp(session, payload.email, settings.otp_ttl_seconds)
+    background_tasks.add_task(deliver_queued_notifications_for_recipient, user.id, "email_verify")
     return {"sent": True}
 
 
@@ -165,8 +170,10 @@ async def google_auth(
 
 
 @router.post("/forgot-password")
-async def forgot_password(payload: ForgotPasswordRequest, session: AsyncSession = Depends(get_db)):
-    await auth_service.forgot_password(session, payload.email)
+async def forgot_password(payload: ForgotPasswordRequest, background_tasks: BackgroundTasks, session: AsyncSession = Depends(get_db)):
+    user = await auth_service.forgot_password(session, payload.email)
+    if user:
+        background_tasks.add_task(deliver_queued_notifications_for_recipient, user.id, "password_reset")
     return {"sent": True}
 
 

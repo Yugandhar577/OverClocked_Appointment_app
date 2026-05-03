@@ -56,7 +56,7 @@ export function PaymentPage() {
     setError("")
     setMessage("Opening Razorpay checkout…")
     try {
-      const next = initiated ?? (await initiatePayment(bookingId))
+      const next = await initiatePayment(bookingId)
       setInitiated(next)
 
       if (next.mock_checkout) {
@@ -107,7 +107,7 @@ export function PaymentPage() {
       navigate(`/booking/${bookingId}/confirmation`, { replace: true })
     } catch (err) {
       setError(errorMessage(err))
-      setMessage("Demo completion failed. Ensure DEMO_PAYMENT_BYPASS=true on the backend for hackathon mode.")
+      setMessage("Demo completion failed. Ensure the backend is running in local/dev mode for hackathon presentation.")
     } finally {
       setEmbeddedPaying(false)
     }
@@ -121,8 +121,7 @@ export function PaymentPage() {
         <Notice>
           <strong>Secure payment gateway</strong> — UPI, Card, NetBanking, and Wallet are available in Razorpay checkout.
           The panel below stays on screen while the Razorpay window opens. Use <strong>Demo success for presentation</strong> if
-          the hosted modal is blocked (requires <code className="rounded bg-white/80 px-1">DEMO_PAYMENT_BYPASS=true</code> on the
-          server).
+          the hosted modal is blocked. Demo success is enabled in local/dev mode.
         </Notice>
         <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
           <div className="min-w-0">
